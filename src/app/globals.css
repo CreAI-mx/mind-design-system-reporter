@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Tailwind v4: class-based dark mode requires explicit declaration */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* LIPU Mind brand colors */
+  --color-lipu-500: #A3B500;
+  --color-lipu-600: #D0DF00;
+  --color-lipu-text: #63666A;
+
+  /* Fleetbase legacy */
+  --color-fleetbase-green-500: #16A34A;
+  --color-fleetbase-green-600: #22C55E;
+  --color-fleetbase-green-700: #15803d;
+  --color-fleetbase-gray-100: #F3F4F6;
+  --color-fleetbase-gray-300: #E5E7EB;
+  --color-fleetbase-gray-500: #9CA3AF;
+  --color-fleetbase-gray-700: #6B7280;
+  --color-fleetbase-gray-900: #111827;
+
+  /* Sky */
+  --color-sky-100: #e6f0fb;
+  --color-sky-200: #bad5f5;
+  --color-sky-300: #8dbbef;
+  --color-sky-400: #61a0e8;
+  --color-sky-500: #3485e2;
+  --color-sky-600: #1c6cc7;
+  --color-sky-700: #16539a;
+  --color-sky-800: #103b6d;
+  --color-sky-900: #092341;
+
+  /* Nightsky */
+  --color-nightsky-100: #0d2f57;
+  --color-nightsky-200: #092340;
+  --color-nightsky-300: #06172a;
+  --color-nightsky-400: #030b14;
+
+  /* Night */
+  --color-night-801: #222C3C;
+  --color-night-802: #202A3A;
+  --color-night-803: #1D2737;
+  --color-night-804: #1B2535;
+  --color-night-805: #182232;
+  --color-night-901: #131B2B;
+  --color-night-902: #111929;
+  --color-night-903: #0E1626;
+  --color-night-904: #0C1424;
+  --color-night-905: #091121;
+
+  /* Midnight */
+  --color-midnight-100: #555555;
+  --color-midnight-200: #484848;
+  --color-midnight-300: #3b3b3b;
+  --color-midnight-400: #2e2e2e;
+  --color-midnight-500: #222222;
+  --color-midnight-600: #151515;
+  --color-midnight-700: #080808;
+
+  /* Moregray */
+  --color-moregray-750: #283345;
+  --color-moregray-850: #212a38;
+
+  /* LIPU Shadow system */
+  --shadow-xs: 0 0 0 1px rgba(0,0,0, 0.05);
+  --shadow-light-xs: 0 0 0 1px rgba(212,220,236, 0.05);
+  --shadow-light-sm: 0 1px 2px 0 rgba(212,220,236, 0.05);
+  --shadow-light: 0 1px 3px 0 rgba(212,220,236, 0.1), 0 1px 2px 0 rgba(212,220,236, 0.06);
+  --shadow-light-md: 0 4px 6px -1px rgba(212,220,236, 0.1), 0 2px 4px -1px rgba(212,220,236, 0.06);
+  --shadow-light-lg: 0 10px 15px -3px rgba(212,220,236, 0.1), 0 4px 6px -2px rgba(212,220,236, 0.05);
+  --shadow-light-xl: 0 20px 25px -5px rgba(212,220,236, 0.1), 0 10px 10px -5px rgba(212,220,236, 0.04);
+  --shadow-light-2xl: 0 25px 50px -12px rgba(212,220,236, 0.25);
+  --shadow-light-3xl: 0 35px 60px -15px rgba(212,220,236, 0.3);
+  --shadow-pop: 0 0 2.25rem #d4dcec;
+  --shadow-pop-less: 0 0 1rem #d4dcec;
+  --shadow-pop-lesser: 0 0 .5rem #d4dcec;
+  --shadow-pop-least: 0 0 .25rem #d4dcec;
+  --shadow-dark-overlay: -5px 10px 13px 3px rgba(0,0,0,0.3);
+  --shadow-dark-overlay-gray: -5px 10px 13px 3px rgba(26, 32, 44, .5);
+  --shadow-overlay-inner: inset 0 1px 5px 0 rgba(0, 0, 0, 0.3);
+  --shadow-next-nav: rgba(0 0 0 / 35%) 0px 7px 32px;
+
+  /* Extended spacing */
+  --spacing-70: 18rem;
+  --spacing-74: 22rem;
+  --spacing-78: 26rem;
+  --spacing-82: 28rem;
+  --spacing-86: 30rem;
+
+  /* Font */
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-white text-gray-900 font-sans antialiased;
+  }
+}

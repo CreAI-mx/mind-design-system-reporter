@@ -1,0 +1,178 @@
+{
+  "$schema_note": "Machine-readable inventory of real UI components in console/, as of 2026-07-29. Descriptive, not prescriptive. Two layers coexist: the vendored @fleetbase/ember-ui addon (older, Bootstrap-era class conventions like btn-{type}-{size}) and the Lipu-specific layer at app/components/lipu/ui/ (Tailwind-based, the one to treat as canonical going forward for new UI).",
+  "buttons": {
+    "canonical": {
+      "component": "Lipu::Ui::Button",
+      "files": ["console/app/components/lipu/ui/button.js", "console/app/components/lipu/ui/button.hbs"],
+      "variants": {
+        "primary": "bg-lipu-500 text-lipu-text hover:bg-lipu-600",
+        "secondary": "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600",
+        "danger": "bg-red-600 text-white hover:bg-red-700",
+        "inline": "border-0 bg-transparent shadow-none text-lipu-500 dark:text-lipu-400 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-lipu-500",
+        "ghost": "border-0 bg-transparent shadow-none text-lipu-600 dark:text-lipu-400 hover:text-lipu-700"
+      },
+      "defaultVariant": "primary",
+      "sizes": {
+        "sm": "px-3 py-2 text-xs",
+        "md": "px-4 py-2.5 text-sm",
+        "lg": "px-5 py-3 text-sm"
+      },
+      "defaultSize": "md",
+      "note": "sizes are ignored for inline/ghost variants, which force px-0 py-0 text-sm",
+      "baseClass": "lipu-ui-button [lipu-ui-button--inline] cursor-pointer inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors [shadow-sm] {sizeClass} {variantClass}",
+      "renders": "<LinkTo> when @route is given, else <button>; both branches share icon/label/spinner logic (FaIcon left/right + label span)"
+    },
+    "legacyPrimitive": {
+      "component": "@fleetbase/ember-ui Button",
+      "file": "node_modules/@fleetbase/ember-ui/addon/components/button.hbs",
+      "classConvention": "btn {btn-is-loading} {btn-outline} btn-{type|default} btn-{size|sm}",
+      "note": "Older, non-Tailwind class convention. Not the one to document as the pattern for new work; kept here because it still underlies some vendored screens."
+    }
+  },
+  "badgesAndPills": {
+    "vendorBadge": {
+      "file": "node_modules/@fleetbase/ember-ui/addon/components/badge.hbs",
+      "pattern": "status-badge {type|status|'info'}-status-badge, inner span status-badge-inner-wrap with rounded/rounded-full + text-xs font-medium",
+      "note": "color comes from vendor CSS class combinations, not inline Tailwind color utilities"
+    },
+    "vendorPill": {
+      "file": "node_modules/@fleetbase/ember-ui/addon/components/pill.hbs",
+      "pattern": "fleetbase-pill > a.flex.flex-row.space-x-2, avatar w-7 h-7 rounded-full ring-2, title text-sm, subtitle text-xs text-gray-400"
+    },
+    "domainExamples": [
+      {
+        "component": "contract-status-badge",
+        "file": "app/components/lipu/display/contract-status-badge.hbs",
+        "variants": {
+          "success": "bg-green-100 text-green-600",
+          "warning": "bg-yellow-100 text-yellow-800",
+          "danger": "bg-red-100 text-red-800",
+          "default": "bg-gray-100 text-gray-800"
+        },
+        "sizes": { "sm": "text-xs px-2 py-0.5", "md": "text-sm px-2.5 py-1", "lg": "text-base px-3 py-1.5" },
+        "baseClass": "inline-flex items-center rounded-full font-medium"
+      },
+      {
+        "component": "point-badge",
+        "file": "app/components/lipu/locations/point-badge.hbs",
+        "variants": {
+          "in (active)": "bg-[#E8F0B8] text-[#5B6A0E] dark:bg-lipu-800 dark:text-lipu-100",
+          "default (inactive)": "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-200"
+        },
+        "baseClass": "inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold",
+        "note": "has a hover-triggered coordinate tooltip"
+      }
+    ]
+  },
+  "cards": {
+    "note": "No single canonical Card component — ~40 independent *-card.* files exist, mostly domain-specific, not a shared kit.",
+    "referenceExample": {
+      "component": "client/kpi-card",
+      "file": "console/app/components/client/kpi-card.hbs",
+      "pattern": "bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6; title text-sm font-medium text-gray-500 dark:text-gray-400 mb-3; value h2 with inline style font-size:30px;font-weight:500;line-height:150%; metrics row flex items-center space-x-6"
+    },
+    "otherFiles": [
+      "app/components/activity-gauge-card.hbs",
+      "app/components/github-card.hbs",
+      "app/components/client/client-stats-card.hbs",
+      "app/components/lipu/audit-log/kpi-card.hbs",
+      "app/components/lipu/audit-log/report-card.hbs",
+      "app/components/lipu/display/client-kpi-card.hbs",
+      "app/components/lipu/display/plant-card.hbs",
+      "app/components/lipu/monitoring/trace-drawer/{assignment,comments,escalation,incidents,logbook,map,status,telemetry,timeline}-card.hbs",
+      "app/components/lipu/operations/metric-card.hbs",
+      "app/components/lipu/operations/planning/hard-violations-card.hbs",
+      "app/components/lipu/operations/planning/kpi-card.hbs",
+      "app/components/lipu/operations/guards/zone-kpi-card.hbs",
+      "app/components/lipu/operations/guards/plan-coverage-card.hbs",
+      "app/components/lipu/operations/guards/guard-candidate-card.hbs",
+      "app/components/lipu/operations/trips/confirmation-card.hbs",
+      "app/components/lipu/operations/approvals/approval-card.hbs",
+      "app/components/lipu/notifications/approval-card.hbs",
+      "app/components/lipu/notifications/notification-card.hbs",
+      "app/components/lipu/metrics/impact-dashboard/incident-classification-card.hbs"
+    ]
+  },
+  "inputsAndForms": {
+    "inputGroup": { "file": "node_modules/@fleetbase/ember-ui/addon/components/input-group.hbs", "pattern": "div.input-group > Input.w-full.form-input; no explicit error/focus styling in template, relies on .form-input CSS + native :disabled" },
+    "toggle": {
+      "file": "node_modules/@fleetbase/ember-ui/addon/components/toggle.hbs",
+      "track": "{activeColorClass|'bg-gray-200'} absolute h-4 w-9 mx-auto rounded-full",
+      "thumb": "{translate-x-5|translate-x-0} absolute left-0 h-5 w-5 border border-gray-200 rounded-full bg-white shadow group-focus:shadow-outline group-focus:border-blue-300",
+      "disabled": "wrapper gets opacity-50",
+      "activeColorClassPattern": "bg-{color}-400 (default green)"
+    },
+    "select": { "file": "node_modules/@fleetbase/ember-ui/addon/components/select.hbs", "stateClasses": ["form-select", "has--selection", "has--placeholder", "disabled"], "note": "state is expressed via semantic classes, not raw Tailwind utilities" },
+    "modelSelect": { "file": "node_modules/@fleetbase/ember-ui/addon/components/model-select.hbs", "wrapperClass": "fleetbase-model-select fleetbase-power-select ember-model-select", "loadingClass": "ember-model-select__loading" },
+    "focusStatePattern": {
+      "source": "app/components/lipu/ui/data-table/column-filter-popover.hbs",
+      "classes": "w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm focus:border-[#b8c700] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#d0df00]/35 dark:border-gray-600 dark:bg-gray-700/80",
+      "note": "hardcoded hex focus ring color ([#d0df00]) rather than the lipu-500/600 token — an inconsistency, not a deliberate second brand color"
+    }
+  },
+  "tables": {
+    "dir": "console/app/components/lipu/ui/data-table/",
+    "files": ["column-filter-popover.hbs", "empty-body-row.hbs", "empty-body-row.js", "header-cell.hbs", "pagination.hbs"],
+    "headerCell": {
+      "active": "border-b-[3px] border-[#c9d82e] bg-[#fafaf3] text-slate-800 dark:border-[#d0df00] dark:bg-[#d0df00]/10",
+      "inactive": "bg-transparent text-slate-700 dark:text-slate-200"
+    },
+    "pagination": {
+      "wrapper": "rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 border-t border-gray-200 bg-gray-50 px-2 py-2 dark:bg-gray-800/80",
+      "navButton": "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white disabled:cursor-not-allowed disabled:opacity-40",
+      "activePage": "border-lipu-500 bg-lipu-500 text-gray-900 shadow-sm"
+    },
+    "emptyBodyRow": {
+      "file": "empty-body-row.hbs",
+      "pattern": "td.{cellClass|'px-4 py-16 text-center'} > icon circle w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4; title text-base font-semibold text-gray-900 dark:text-white mb-1; description text-sm text-gray-500 dark:text-gray-400; optional Lipu::Ui::Button @variant=primary"
+    },
+    "vendorTablePrimitive": { "note": "@fleetbase/ember-ui table.hbs/table.js exist but are not what real Lipu screens use — data-table/* above is the actual system." }
+  },
+  "modalsAndDrawers": {
+    "vendorModal": { "file": "node_modules/@fleetbase/ember-ui/addon/components/modal.hbs", "note": "Composition shell yielding header/body/footer, backdrop class flb--modal-backdrop. Bootstrap-era, no Tailwind. Real Lipu modals bypass this with custom markup." },
+    "vendorDrawer": { "file": "node_modules/@fleetbase/ember-ui/addon/components/drawer.hbs", "classPattern": "next-drawer {drawer-is-minimized} {drawer-is-resizing} {drawer-is-open}", "note": "Also a non-Tailwind primitive; real Lipu drawers are custom too." },
+    "realModalExample": {
+      "file": "app/components/modals/add-client-modal.hbs",
+      "overlay": "fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75",
+      "panel": "relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow-xl w-full max-w-4xl",
+      "header": "border-b border-gray-200 dark:border-gray-700 px-6 py-4"
+    },
+    "realDrawerExample": {
+      "file": "app/components/lipu/management/user-detail-drawer.hbs",
+      "backdrop": "absolute inset-0 bg-black/40 dark:bg-black/60",
+      "panel": "aside.absolute.right-0.top-0.flex.h-full.w-[min(100%,440px)].flex-col.overflow-hidden.border-l.border-gray-200.bg-white.shadow-[rgba(0,0,0,0.12)_-4px_0px_24px].dark:border-gray-700.dark:bg-gray-800",
+      "activeTab": "border-b-2 border-lipu-500",
+      "otherExamples": ["app/components/lipu/management/create-role-drawer.hbs", "app/components/lipu/management/create-user-drawer.hbs", "app/components/lipu/management/edit-role-drawer.hbs"]
+    },
+    "modalFamilyCount": "~20+ files under app/components/modals/"
+  },
+  "emptyStates": {
+    "canonical": false,
+    "note": "No shared Lipu::Ui::EmptyState component. Two independent local patterns exist.",
+    "instances": [
+      { "scope": "table row", "file": "app/components/lipu/ui/data-table/empty-body-row.hbs" },
+      { "scope": "feature-local, not reused elsewhere", "file": "app/components/lipu/operations/approvals/empty-state.hbs", "pattern": "div.p-12.text-center > icon circle w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4; title text-lg font-medium text-gray-900 dark:text-white mb-1; message text-sm text-gray-500 dark:text-gray-400" }
+    ]
+  },
+  "loadingAndSkeletons": {
+    "kpiSkeleton": {
+      "file": "app/components/lipu/ui/kpi-skeleton.hbs",
+      "pattern": "div.animate-pulse.rounded-xl.border.border-gray-200.dark:border-gray-700.bg-white.dark:bg-gray-800.p-4.space-y-3 with bars h-3/h-7/h-2.5 bg-gray-200 dark:bg-gray-700 rounded"
+    },
+    "tableSkeleton": {
+      "file": "app/components/lipu/ui/table-skeleton.hbs",
+      "pattern": "div.animate-pulse.space-y-2.py-4 looping 30 rows of grid-cols-8 gap-3, cells h-4 bg-gray-200 dark:bg-gray-700 rounded-md"
+    },
+    "technique": "Tailwind animate-pulse + flat gray blocks; no custom shimmer keyframes.",
+    "note": "animate-spin (~25 occurrences) is the separate pattern used for inline loading spinners (submit buttons, async actions), distinct from these two skeleton components."
+  },
+  "tooltips": {
+    "infoTooltip": {
+      "files": ["app/components/lipu/ui/info-tooltip.js", "app/components/lipu/ui/info-tooltip.hbs"],
+      "trigger": "button.inline-flex.items-center.justify-center.w-3.5.h-3.5.rounded-full.text-gray-400.hover:text-gray-600.dark:hover:text-gray-300.cursor-help.align-middle with FaIcon circle-info",
+      "positioning": "JS-computed via getBoundingClientRect(), not CSS/popper-based; clamps x to 140px half-width from viewport edges, top = rect.bottom + 8",
+      "popupClass": "fixed z-[9999] pointer-events-none w-[280px] rounded-lg border border-green-500 bg-green-50 dark:bg-green-950/95 dark:border-green-600 px-3 py-2.5 shadow-md",
+      "role": "tooltip"
+    }
+  }
+}

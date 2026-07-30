@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { readArtifacts, writeArtifacts } from '@/lib/artifacts'
+import { getArtifact, updateArtifact, deleteArtifact } from '@/lib/artifacts'
 import { addArchiveEntry } from '@/lib/archive'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const artifacts = readArtifacts()
-  const artifact = artifacts.find((a) => a.id === id)
+  const artifact = await getArtifact(id)
   if (!artifact) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(artifact)
 }
@@ -13,28 +14,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await request.json()
-  const artifacts = readArtifacts()
-  const index = artifacts.findIndex((a) => a.id === id)
-  if (index === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  artifacts[index] = {
-    ...artifacts[index],
-    ...body,
-    id,
-    updatedAt: new Date().toISOString(),
-  }
+  const existing = await getArtifact(id)
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  writeArtifacts(artifacts)
-  addArchiveEntry(artifacts[index], 'updated')
-  return NextResponse.json(artifacts[index])
+  const updated = await updateArtifact(id, body)
+  await addArchiveEntry(updated, 'updated')
+  return NextResponse.json(updated)
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const artifacts = readArtifacts()
-  const artifact = artifacts.find((a) => a.id === id)
+  const artifact = await getArtifact(id)
   if (!artifact) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  writeArtifacts(artifacts.filter((a) => a.id !== id))
-  addArchiveEntry(artifact, 'deleted')
+  await addArchiveEntry(artifact, 'deleted')
+  await deleteArtifact(id)
   return NextResponse.json({ ok: true })
 }

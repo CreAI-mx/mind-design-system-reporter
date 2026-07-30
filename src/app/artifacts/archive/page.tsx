@@ -16,10 +16,9 @@ const ACTION_CONFIG = {
   deleted: { label: 'Eliminado', icon: Trash2, color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20' },
 }
 
-export default function ArchivePage() {
-  const currentArtifacts = readArtifacts()
+export default async function ArchivePage() {
+  const [currentArtifacts, entries] = await Promise.all([readArtifacts(), readArchive()])
   const currentIds = new Set(currentArtifacts.map((a) => a.id))
-  const entries = readArchive()
 
   /* ── Deleted & recoverable: latest deletion per ID not in current ── */
   const deletedMap = entries

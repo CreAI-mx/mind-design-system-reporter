@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { readArtifacts } from '@/lib/artifacts'
+import { getArtifact } from '@/lib/artifacts'
 import { getModule, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from '@/components/artifacts/status-badge'
 import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-button'
@@ -14,8 +14,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function ArtifactDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const artifacts = readArtifacts()
-  const artifact = artifacts.find((a) => a.id === id)
+  const artifact = await getArtifact(id)
   if (!artifact) notFound()
 
   const mod = getModule(artifact.module)

@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'
 
 const STATUSES: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
 
-export default function DashboardPage() {
-  const artifacts = readArtifacts()
+export default async function DashboardPage() {
+  const artifacts = await readArtifacts()
   const total = artifacts.length
 
   /* ── Global status counts ──────────────────────────────────── */

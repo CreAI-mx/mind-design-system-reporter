@@ -52,6 +52,17 @@ const NAV: NavItem[] = [
   },
   { id: 'layout', label: 'Layout' },
   { id: 'accessibility', label: 'Accessibility' },
+  {
+    id: 'guidelines',
+    label: 'Guidelines',
+    children: [
+      { id: 'patterns', label: 'Patterns' },
+      { id: 'writing', label: 'Writing' },
+      { id: 'dodont', label: "Do's & Don'ts" },
+      { id: 'spacing', label: 'Spacing' },
+      { id: 'states', label: 'States' },
+    ],
+  },
 ]
 
 interface DSViewerProps {
@@ -66,7 +77,7 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['foundations', 'components']))
   const [showDownload, setShowDownload] = useState(false)
   const [selectedSections, setSelectedSections] = useState<Set<string>>(
-    new Set(['README.md', 'foundations.md', 'components.md', 'layout.md', 'motion.md', 'accessibility.md', 'icons.md'])
+    new Set(['README.md', 'foundations.md', 'components.md', 'layout.md', 'motion.md', 'accessibility.md', 'icons.md', 'patterns.md', 'writing.md', 'do-dont.md', 'spacing.md', 'states.md'])
   )
 
   function toggleExpand(id: string) {
@@ -231,7 +242,7 @@ function SectionContent({
     case 'colors':
       return (
         <div className={wrapperClass}>
-          <ColorsSection colors={(tokens as any).colors} />
+          <ColorsSection colors={(tokens as any).colors} chartPalette={(tokens as any).chartPalette} />
           <MdSection content={mdSections.foundations} filter="## Color" />
         </div>
       )
@@ -319,9 +330,66 @@ function SectionContent({
           <MdSection content={mdSections.accessibility} />
         </div>
       )
+    case 'patterns':
+      return (
+        <div className={wrapperClass}>
+          <MdSection content={mdSections.patterns} />
+        </div>
+      )
+    case 'writing':
+      return (
+        <div className={wrapperClass}>
+          <MdSection content={mdSections.writing} />
+        </div>
+      )
+    case 'dodont':
+      return (
+        <div className={wrapperClass}>
+          <MdSection content={mdSections.dodont} />
+        </div>
+      )
+    case 'spacing':
+      return (
+        <div className={wrapperClass}>
+          <MdSection content={mdSections.spacing} />
+        </div>
+      )
+    case 'states':
+      return (
+        <div className={wrapperClass}>
+          <MdSection content={mdSections.states} />
+        </div>
+      )
     default:
       return null
   }
+}
+
+const MD_COMPONENTS = {
+  pre({ children }: { children?: React.ReactNode }) {
+    return (
+      <div className="not-prose my-4">
+        <pre className="overflow-x-auto rounded-xl bg-[#1e1e1e] border border-gray-700 px-5 py-4 text-xs leading-relaxed">
+          {children}
+        </pre>
+      </div>
+    )
+  },
+  code({ className, children }: { className?: string; children?: React.ReactNode }) {
+    const isBlock = Boolean(className)
+    if (isBlock) {
+      return (
+        <code className="text-gray-200 font-mono whitespace-pre">
+          {children}
+        </code>
+      )
+    }
+    return (
+      <code className="text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-[0.85em] font-mono">
+        {children}
+      </code>
+    )
+  },
 }
 
 function MdSection({ content, filter }: { content: string; filter?: string }) {
@@ -338,13 +406,9 @@ function MdSection({ content, filter }: { content: string; filter?: string }) {
     <div className="prose prose-sm dark:prose-invert max-w-none
       prose-headings:font-semibold
       prose-table:text-xs prose-td:py-2 prose-th:py-2
-      prose-code:text-lipu-500 dark:prose-code:text-lipu-600
-      prose-code:bg-gray-100 dark:prose-code:bg-night-801
-      prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
       prose-code:before:content-none prose-code:after:content-none
-      prose-pre:bg-gray-900 dark:prose-pre:bg-night-805
     ">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS as any}>{text}</ReactMarkdown>
     </div>
   )
 }
@@ -357,6 +421,11 @@ const DOWNLOAD_FILES = [
   { key: 'motion.md', label: 'Motion' },
   { key: 'accessibility.md', label: 'Accessibility' },
   { key: 'icons.md', label: 'Icons' },
+  { key: 'patterns.md', label: 'Patterns' },
+  { key: 'writing.md', label: 'Writing' },
+  { key: 'do-dont.md', label: "Do's & Don'ts" },
+  { key: 'spacing.md', label: 'Spacing' },
+  { key: 'states.md', label: 'States' },
 ]
 
 function DownloadModal({

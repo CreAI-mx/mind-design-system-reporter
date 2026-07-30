@@ -18,6 +18,11 @@
 | [`motion.md`](./motion.md) | Transitions, keyframes, `animate-*` usage, reduced-motion gap |
 | [`accessibility.md`](./accessibility.md) | What's actually implemented + summary/link to the canonical gap tracker |
 | [`icons.md`](./icons.md) | Full enumerated inventory of all 48 custom SVG icons, with known issues (hardcoded colors, duplicate geometry, the one parametric icon) |
+| [`patterns.md`](./patterns.md) | Recurring page-level layouts: list/table, detail/drawer, modal/form, dashboard/KPI, empty state, settings |
+| [`writing.md`](./writing.md) | Voice, tone, button copy, labels, placeholders, error messages, empty states, date/number formatting |
+| [`do-dont.md`](./do-dont.md) | Explicit anti-patterns: colors, dark mode, icons, typography, spacing, z-index, accessibility, mobile |
+| [`spacing.md`](./spacing.md) | Base unit (4px grid), page/component/inline spacing conventions, large-width tokens, anti-patterns |
+| [`states.md`](./states.md) | Button, input, toggle, table, tab, loading (skeleton + spinner), error, and drag states |
 | [`tokens.json`](./tokens.json) | Machine-readable foundations data (colors, shadows, spacing, typography, dark mode, z-index, breakpoints, motion) |
 | [`components.json`](./components.json) | Machine-readable component inventory (variants, real class strings, file references) |
 | [`icons.json`](./icons.json) | Machine-readable icon inventory with ready-to-render, static SVG markup (Ember template syntax stripped) |

@@ -34,6 +34,11 @@ export default function DesignSystemPage() {
     layout: readMd('layout.md'),
     motion: readMd('motion.md'),
     accessibility: readMd('accessibility.md'),
+    patterns: readMd('patterns.md'),
+    writing: readMd('writing.md'),
+    dodont: readMd('do-dont.md'),
+    spacing: readMd('spacing.md'),
+    states: readMd('states.md'),
   }
 
   return <DSViewer tokens={tokens} components={components} mdSections={mdSections} icons={icons} />

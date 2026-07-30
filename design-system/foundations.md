@@ -23,6 +23,42 @@ The palette lives entirely in `theme.extend.colors` (`tailwind.config.js:29-89`)
 
 Component code also hardcodes one-off hex values outside the palette when a shade doesn't exist in Tailwind's scale, e.g. `bg-[#E8F0B8]` in `point-badge.hbs`, `border-[#c9d82e]` in the table header-cell active state, and `focus:ring-[#d0df00]/35` in the column-filter input (which duplicates `lipu-600` as a literal hex instead of referencing the token).
 
+### Chart palette (lipu gradient) — not in Tailwind config
+
+A 7-step "lipu" sequential gradient exists and is used for real donut/pie charts, but it is **not** part of `tailwind.config.js` — it's hardcoded as a JS array inside the chart component itself:
+
+```js
+// app/components/lipu/audit-log/role-assignment.js:40-51
+get palette() {
+    return [
+        '#515B0C', // lipu-900 (per this file's own comment)
+        '#7B8902', // lipu-700
+        '#A3B500', // lipu-600
+        '#D0DF00', // lipu-500
+        '#F0FB20', // lipu-400
+        '#FBFF53', // lipu-300
+        '#FFFE92', // lipu-200
+    ];
+}
+```
+
+This is the palette behind the **Bitácora → Asignación de roles donut** (`app/templates/lipu/management/audit-logs/index.hbs:82-87`, `<Lipu::AuditLog::RoleAssignment>`, Chart.js `type: 'doughnut'`, `cutout: '70%'`). Colors are assigned **by array index against whichever role labels the API returns** — there's no on-time/delayed/status semantics, just a 7-color rotation, and the component's own comment is explicit about this: *"Always use our palette colors, ignore any colors from backend."*
+
+**Known inconsistency — the shade labels contradict `tailwind.config.js`:** this file's comments call `#A3B500` → `lipu-600` and `#D0DF00` → `lipu-500`. But `tailwind.config.js:43-44` defines it the other way around: `lipu.500 = #A3B500`, `lipu.600 = #D0DF00`. The two darkest/lightest steps (`lipu-900`, `lipu-700`, `lipu-400`, `lipu-300`, `lipu-200`) don't exist as Tailwind keys at all — they're names this component invented for its own gradient, not tokens. Anyone reusing this palette should go by the **hex values**, not the shade-number comments, until this gets reconciled.
+
+**Reused subset, different semantics:** the Impact Dashboard's own donut (`app/components/lipu/metrics/impact-dashboard/monitorista-activity-section.js:6-11`) reuses the 4 darkest hexes from the same gradient, but *does* attach real category labels:
+
+```js
+const TYPE_META = [
+    { key: 'activation', color: '#515B0C' },
+    { key: 'route',      color: '#7B8902' },
+    { key: 'unit',        color: '#A3B500' },
+    { key: 'operator',   color: '#D0DF00' },
+];
+```
+
+So the same 4 hex values mean "index 1–4 of a rotation" in one donut and "activation/route/unit/operator" in another — same colors, two different and incompatible mapping conventions, both undocumented outside their own component file until now.
+
 ## Typography
 
 **Known inconsistency, not a two-font system:** `console/app/styles/lipu.css` hardcodes `font-family: Roboto` (lines 3, 9, 14, all `!important`), while `console/app/styles/lipu-management.css` hardcodes `font-family: Inter` (lines 50, 69, also `!important`). Tailwind's config only registers a `roboto` font family (`tailwind.config.js:27`) — `Inter` isn't wired through Tailwind at all. Which font actually renders on a given screen depends on CSS load order and specificity, not a deliberate choice per screen type.

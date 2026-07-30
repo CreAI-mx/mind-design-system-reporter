@@ -12,6 +12,11 @@ const SECTIONS = [
   { file: 'motion.md', title: 'Motion' },
   { file: 'accessibility.md', title: 'Accessibility' },
   { file: 'icons.md', title: 'Icons' },
+  { file: 'patterns.md', title: 'Patterns' },
+  { file: 'writing.md', title: 'Writing' },
+  { file: 'do-dont.md', title: "Do's & Don'ts" },
+  { file: 'spacing.md', title: 'Spacing' },
+  { file: 'states.md', title: 'States' },
 ]
 
 export async function GET(request: Request) {

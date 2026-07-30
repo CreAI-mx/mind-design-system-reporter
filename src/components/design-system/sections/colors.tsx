@@ -4,8 +4,15 @@ import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { SectionHeader, Token } from '../ds-primitives'
 
+interface ChartPalette {
+  sequence: string[]
+  note?: string
+  shadeLabelConflict?: { componentCommentLabels: Record<string, string> }
+}
+
 interface ColorsProps {
   colors: Record<string, unknown>
+  chartPalette?: ChartPalette
 }
 
 const GROUP_NOTES: Record<string, string> = {
@@ -19,7 +26,7 @@ const GROUP_NOTES: Record<string, string> = {
   moregray: 'Dos grays adicionales que no caben en las escalas anteriores.',
 }
 
-export function ColorsSection({ colors }: ColorsProps) {
+export function ColorsSection({ colors, chartPalette }: ColorsProps) {
   const groups = Object.entries(colors).filter(([k]) => k !== 'note') as [string, Record<string, string>][]
 
   return (
@@ -45,6 +52,10 @@ export function ColorsSection({ colors }: ColorsProps) {
           </div>
         </div>
       ))}
+
+      {chartPalette?.sequence && chartPalette.sequence.length > 0 && (
+        <ChartPaletteSection palette={chartPalette} />
+      )}
     </div>
   )
 }
@@ -80,6 +91,49 @@ function ColorSwatch({ group, shade, hex }: { group: string; shade: string; hex:
         <p className="text-[10px] text-gray-400 font-mono">{hex}</p>
       </div>
     </button>
+  )
+}
+
+function ChartPaletteSection({ palette }: { palette: ChartPalette }) {
+  const { sequence, shadeLabelConflict } = palette
+  const gradientStyle = {
+    background: `linear-gradient(to right, ${sequence.join(', ')})`,
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline gap-3 mb-3">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Chart palette — lipu gradient</h3>
+        <p className="text-xs text-gray-400 max-w-xl">
+          7-step gradient hardcodeado en componentes de chart. No forma parte de tailwind.config.js.
+        </p>
+      </div>
+
+      {/* Gradient bar */}
+      <div
+        className="w-full h-10 rounded-xl mb-4 shadow-light-xs border border-gray-200 dark:border-night-801"
+        style={gradientStyle}
+      />
+
+      {/* Swatches */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {sequence.map((hex, i) => {
+          const label = shadeLabelConflict?.componentCommentLabels?.[hex]
+          return (
+            <ColorSwatch
+              key={hex}
+              group="chart"
+              shade={label ?? `step-${i + 1}`}
+              hex={hex}
+            />
+          )
+        })}
+      </div>
+
+      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+        Los shade labels del componente (lipu-900…lipu-200) contradicen tailwind.config.js — usar el valor hex, no el shade number.
+      </p>
+    </div>
   )
 }
 

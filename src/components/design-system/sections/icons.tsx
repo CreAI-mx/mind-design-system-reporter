@@ -1,16 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { library } from '@fortawesome/fontawesome-svg-core'
 import { fas } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import type { IconName } from '@fortawesome/fontawesome-svg-core'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { SectionHeader } from '../ds-primitives'
-
-// Register the entire free-solid pack so icons can be looked up by name string
-library.add(fas)
 
 /* ── types ── */
 
@@ -53,13 +49,14 @@ export interface IconsSectionProps {
 
 /* ── FA icon renderer ── */
 
+function kebabToCamel(name: string) {
+  return 'fa' + name.split('-').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+}
+
 function FaIcon({ name, className }: { name: string; className?: string }) {
-  return (
-    <FontAwesomeIcon
-      icon={['fas', name as IconName]}
-      className={className ?? 'w-4 h-4'}
-    />
-  )
+  const icon = (fas as Record<string, IconDefinition>)[kebabToCamel(name)]
+  if (!icon) return <span className="text-[10px] text-gray-400 font-mono">{name}</span>
+  return <FontAwesomeIcon icon={icon} className={className ?? 'w-4 h-4'} />
 }
 
 /* ── FA icon card (click to copy name) ── */

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Layers, LayoutDashboard, BarChart3, Archive } from 'lucide-react'
+import { BookOpen, Layers, LayoutDashboard, BarChart3, Archive, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
@@ -12,33 +12,58 @@ const NAV = [
   { href: '/artifacts/archive', label: 'Archivo', icon: Archive, sub: true },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  open: boolean
+  onClose: () => void
+}
+
+export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col bg-white dark:bg-night-802 border-r border-gray-200 dark:border-night-801">
-      {/* Logo */}
+    <aside
+      className={cn(
+        // Base: full-height column, fixed on mobile / static on desktop
+        'fixed inset-y-0 left-0 z-30 w-64 shrink-0 flex flex-col',
+        'bg-white dark:bg-night-802 border-r border-gray-200 dark:border-night-801',
+        'transition-transform duration-200 ease-in-out',
+        // Desktop: always visible, not fixed
+        'lg:static lg:translate-x-0 lg:w-56',
+        // Mobile: slide in/out
+        open ? 'translate-x-0' : '-translate-x-full',
+      )}
+    >
+      {/* Logo + close button (close only shown on mobile) */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200 dark:border-night-801">
-        <div className="w-7 h-7 rounded-lg bg-lipu-600 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-lipu-600 flex items-center justify-center shrink-0">
           <LayoutDashboard className="w-4 h-4 text-gray-900" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">LIPU Mind</p>
           <p className="text-[10px] text-gray-400 mt-0.5">DS Reporter</p>
         </div>
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
+          aria-label="Cerrar menú"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV.map(({ href, label, icon: Icon, sub }) => {
           const active = href === '/' ? pathname === '/' : pathname === href
           return (
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
                 'flex items-center gap-2.5 rounded-lg text-sm font-medium transition-colors',
-                sub ? 'px-3 py-1.5 ml-3' : 'px-3 py-2',
+                // Larger touch targets on mobile
+                sub ? 'px-3 py-2 lg:py-1.5 ml-3' : 'px-3 py-2.5 lg:py-2',
                 active
                   ? 'bg-lipu-600/15 text-lipu-500 dark:text-lipu-600'
                   : sub

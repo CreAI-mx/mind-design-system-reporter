@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Roboto } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
-import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
+import { AppShell } from '@/components/layout/app-shell'
 
 const roboto = Roboto({
   weight: ['400', '500', '600'],
@@ -21,15 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" suppressHydrationWarning>
       <body className={`${roboto.variable} font-sans`}>
         <Providers>
-          <div className="flex h-screen bg-white dark:bg-night-803 overflow-hidden">
-            <Sidebar />
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-              <Header />
-              <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-night-804">
-                {children}
-              </main>
-            </div>
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

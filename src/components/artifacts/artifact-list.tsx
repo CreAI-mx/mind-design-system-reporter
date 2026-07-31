@@ -402,7 +402,7 @@ export function ArtifactList() {
           </div>
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto px-6 pb-4">
+          <div className="flex-1 overflow-y-auto overflow-x-auto px-6 pb-4">
             {paginated.length === 0 ? (
               <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} />
             ) : (

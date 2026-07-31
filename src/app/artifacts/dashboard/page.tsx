@@ -105,7 +105,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* Module rows */}
-            <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 overflow-hidden">
+            <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-night-801">

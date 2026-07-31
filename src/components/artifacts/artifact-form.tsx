@@ -124,7 +124,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Módulo" required>
             <select
               required
@@ -168,7 +168,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
       <section className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5 space-y-4">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado y versión</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Estado">
             <select
               value={form.status}
@@ -273,7 +273,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
 
         {/* Preview grid */}
         {form.imageUrls.length > 0 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {form.imageUrls.map((url) => (
               <div key={url} className="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-night-801 aspect-video bg-gray-50 dark:bg-night-803">
                 {url.startsWith('/uploads/') || url.startsWith('http') ? (

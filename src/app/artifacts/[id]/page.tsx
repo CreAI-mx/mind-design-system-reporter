@@ -9,7 +9,7 @@ import { ArtifactContextButton } from '@/components/artifacts/artifact-context-b
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
-import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight } from 'lucide-react'
+import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight, GitCompare } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +51,15 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
+            {parent && (
+              <Link
+                href={`/artifacts/${artifact.id}/compare`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
+              >
+                <GitCompare className="w-3.5 h-3.5" />
+                Comparar
+              </Link>
+            )}
             <ArtifactDuplicateButton artifact={artifact} />
             <Link
               href={`/artifacts/${artifact.id}/edit`}

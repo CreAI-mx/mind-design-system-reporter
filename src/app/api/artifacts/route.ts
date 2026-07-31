@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { readArtifacts, createArtifact } from '@/lib/artifacts'
 import { addArchiveEntry } from '@/lib/archive'
+import { ensureTags } from '@/lib/tags'
 import type { Artifact } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -35,5 +36,6 @@ export async function POST(request: Request) {
 
   const saved = await createArtifact(artifact)
   await addArchiveEntry(saved, 'created')
+  await ensureTags(saved.tags)
   return NextResponse.json(saved, { status: 201 })
 }

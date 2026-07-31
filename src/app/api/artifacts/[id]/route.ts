@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getArtifact, updateArtifact, deleteArtifact } from '@/lib/artifacts'
 import { addArchiveEntry } from '@/lib/archive'
+import { ensureTags } from '@/lib/tags'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const updated = await updateArtifact(id, body)
   await addArchiveEntry(updated, 'updated')
+  await ensureTags(updated.tags)
   return NextResponse.json(updated)
 }
 

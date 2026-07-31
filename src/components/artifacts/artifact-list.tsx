@@ -72,11 +72,13 @@ function exportCsv(artifacts: Artifact[]) {
 
 export function ArtifactList() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ArtifactStatus | ''>('')
   const [groupFilter, setGroupFilter] = useState<ModuleGroup | ''>('')
   const [moduleFilter, setModuleFilter] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
   const [sort, setSort] = useState<SortKey>('date-desc')
   const [page, setPage] = useState(1)
 
@@ -85,10 +87,14 @@ export function ArtifactList() {
       .then((r) => r.json())
       .then((data) => setArtifacts(data))
       .finally(() => setLoading(false))
+    fetch('/api/tags')
+      .then((r) => r.json())
+      .then((tags: string[]) => setAllTags(tags))
+      .catch(() => {})
   }, [])
 
   // Reset page on filter/sort change
-  useEffect(() => { setPage(1) }, [query, statusFilter, groupFilter, moduleFilter, sort])
+  useEffect(() => { setPage(1) }, [query, statusFilter, groupFilter, moduleFilter, tagFilter, sort])
 
   const moduleOptions = useMemo(
     () => (groupFilter ? MODULES.filter((m) => m.group === groupFilter) : MODULES),
@@ -103,13 +109,14 @@ export function ArtifactList() {
   const filtered = useMemo(() => {
     let result = query ? fuse.search(query).map((r) => r.item) : [...artifacts]
     if (statusFilter) result = result.filter((a) => a.status === statusFilter)
+    if (tagFilter) result = result.filter((a) => a.tags.includes(tagFilter))
     if (moduleFilter) result = result.filter((a) => a.module === moduleFilter)
     else if (groupFilter) {
       const keys = MODULES.filter((m) => m.group === groupFilter).map((m) => m.key)
       result = result.filter((a) => keys.includes(a.module))
     }
     return result
-  }, [query, artifacts, fuse, statusFilter, groupFilter, moduleFilter])
+  }, [query, artifacts, fuse, statusFilter, tagFilter, groupFilter, moduleFilter])
 
   const sorted = useMemo(() => {
     const arr = [...filtered]
@@ -124,13 +131,14 @@ export function ArtifactList() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const hasFilters = query || statusFilter || groupFilter || moduleFilter
+  const hasFilters = query || statusFilter || groupFilter || moduleFilter || tagFilter
 
   function clearFilters() {
     setQuery('')
     setStatusFilter('')
     setGroupFilter('')
     setModuleFilter('')
+    setTagFilter('')
   }
 
   if (loading) {
@@ -183,6 +191,17 @@ export function ArtifactList() {
           <option value="">Todos los módulos</option>
           {moduleOptions.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
+
+        {allTags.length > 0 && (
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
+          >
+            <option value="">Todas las etiquetas</option>
+            {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
 
         {/* Sort */}
         <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
@@ -248,7 +267,7 @@ export function ArtifactList() {
         ) : (
           <div className="space-y-2">
             {paginated.map((artifact) => (
-              <ArtifactRow key={artifact.id} artifact={artifact} />
+              <ArtifactRow key={artifact.id} artifact={artifact} onTagClick={setTagFilter} />
             ))}
           </div>
         )}
@@ -308,7 +327,7 @@ export function ArtifactList() {
   )
 }
 
-function ArtifactRow({ artifact }: { artifact: Artifact }) {
+function ArtifactRow({ artifact, onTagClick }: { artifact: Artifact; onTagClick?: (tag: string) => void }) {
   const mod = MODULES.find((m) => m.key === artifact.module)
   const group = mod?.group
   const groupConfig = group ? MODULE_GROUPS[group] : null
@@ -336,9 +355,14 @@ function ArtifactRow({ artifact }: { artifact: Artifact }) {
         {artifact.tags.length > 0 && (
           <div className="flex gap-1 mt-0.5 flex-wrap">
             {artifact.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-night-801 text-gray-500 dark:text-gray-400">
+              <button
+                key={tag}
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick?.(tag) }}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-night-801 text-gray-500 dark:text-gray-400 hover:bg-lipu-600/10 hover:text-lipu-500 transition-colors"
+              >
                 {tag}
-              </span>
+              </button>
             ))}
             {artifact.tags.length > 3 && <span className="text-[10px] text-gray-400">+{artifact.tags.length - 3}</span>}
           </div>

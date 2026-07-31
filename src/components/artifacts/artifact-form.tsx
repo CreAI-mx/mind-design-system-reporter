@@ -2,11 +2,12 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Plus, Loader2, Upload, FileCode, ImagePlus } from 'lucide-react'
+import { X, Plus, Loader2, FileCode, ImagePlus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import type { Artifact, ArtifactStatus } from '@/lib/types'
 import { MODULES, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from './status-badge'
+import { TagInput } from './tag-input'
 import { cn } from '@/lib/utils'
 
 type FormData = Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>
@@ -55,18 +56,11 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
       : EMPTY
   )
   const [saving, setSaving] = useState(false)
-  const [tagInput, setTagInput] = useState('')
   const [linkInput, setLinkInput] = useState('')
   const [imageInput, setImageInput] = useState('')
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  function addTag() {
-    const t = tagInput.trim().toLowerCase()
-    if (t && !form.tags.includes(t)) update('tags', [...form.tags, t])
-    setTagInput('')
   }
 
   function addLink() {
@@ -210,30 +204,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
       {/* Tags */}
       <section className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5 space-y-4">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Etiquetas</h2>
-        <div className="flex gap-2">
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-            placeholder="Agregar etiqueta y presionar Enter"
-            className={cn(inputClass, 'flex-1')}
-          />
-          <button type="button" onClick={addTag} className={btnSecondary}>
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-        {form.tags.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {form.tags.map((tag) => (
-              <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-night-801 text-gray-600 dark:text-gray-300">
-                {tag}
-                <button type="button" onClick={() => update('tags', form.tags.filter((t) => t !== tag))}>
-                  <X className="w-3 h-3 text-gray-400 hover:text-gray-600" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        <TagInput value={form.tags} onChange={(tags) => update('tags', tags)} />
       </section>
 
       {/* Links */}

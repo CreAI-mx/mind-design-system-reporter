@@ -228,6 +228,7 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['foundations', 'components']))
   const [showDownload, setShowDownload] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const [selectedSections, setSelectedSections] = useState<Set<string>>(
     new Set(['README.md', 'foundations.md', 'components.md', 'layout.md', 'motion.md', 'accessibility.md', 'icons.md', 'patterns.md', 'writing.md', 'do-dont.md', 'spacing.md', 'states.md'])
   )
@@ -244,6 +245,15 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  function getActiveLabel(): string {
+    for (const item of NAV) {
+      if (item.id === active) return item.label
+      const child = item.children?.find((c) => c.id === active)
+      if (child) return child.label
+    }
+    return active
+  }
+
   function navigateTo(sectionId: string) {
     for (const item of NAV) {
       if (item.children?.some((c) => c.id === sectionId)) {
@@ -253,6 +263,7 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
     }
     setActive(sectionId)
     setShowSearch(false)
+    setNavOpen(false)
   }
 
   function toggleExpand(id: string) {
@@ -279,17 +290,44 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Side nav */}
-      <nav className="w-48 shrink-0 bg-white dark:bg-night-802 border-r border-gray-200 dark:border-night-801 flex flex-col overflow-hidden">
-        <div className="px-3 py-3 border-b border-gray-200 dark:border-night-801 flex items-center justify-between">
+      {/* Mobile backdrop */}
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
+      {/* Side nav — bottom sheet on mobile, static sidebar on desktop */}
+      <nav className={cn(
+        'fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-night-802 flex flex-col overflow-hidden transition-transform duration-300 ease-in-out',
+        'rounded-t-2xl border-t border-x border-gray-200 dark:border-night-801 max-h-[72vh]',
+        'lg:static lg:inset-auto lg:z-auto lg:rounded-none lg:border-t-0 lg:border-x-0 lg:border-r lg:max-h-none lg:w-48 lg:shrink-0 lg:translate-y-0',
+        navOpen ? 'translate-y-0' : 'translate-y-full',
+      )}>
+        {/* Drag handle — mobile only */}
+        <div className="lg:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-gray-700" />
+        </div>
+
+        <div className="px-3 py-2.5 border-b border-gray-200 dark:border-night-801 flex items-center justify-between shrink-0">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Design System</p>
-          <button
-            onClick={() => setShowSearch(true)}
-            title="Buscar (⌘K)"
-            className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
-          >
-            <Search className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSearch(true)}
+              title="Buscar (⌘K)"
+              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setNavOpen(false)}
+              className="lg:hidden p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
+              aria-label="Cerrar navegación"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <div className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
           {NAV.map((item) => (
@@ -315,14 +353,33 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
       </nav>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <SectionContent
-          active={active}
-          tokens={tokens}
-          components={components}
-          mdSections={mdSections}
-          icons={icons}
-        />
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Mobile top bar */}
+        <button
+          onClick={() => setNavOpen(true)}
+          className="lg:hidden flex items-center gap-2 px-4 h-11 shrink-0 w-full bg-white dark:bg-night-802 border-b border-gray-200 dark:border-night-801 text-left"
+          aria-label="Abrir navegación"
+        >
+          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+          <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300">{getActiveLabel()}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowSearch(true) }}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
+            aria-label="Buscar"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </button>
+
+        <div className="flex-1 overflow-y-auto">
+          <SectionContent
+            active={active}
+            tokens={tokens}
+            components={components}
+            mdSections={mdSections}
+            icons={icons}
+          />
+        </div>
       </div>
 
       {/* Download modal */}

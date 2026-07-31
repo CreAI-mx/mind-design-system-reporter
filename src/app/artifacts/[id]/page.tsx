@@ -5,6 +5,7 @@ import { getModule, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from '@/components/artifacts/status-badge'
 import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-button'
 import { ArtifactDuplicateButton } from '@/components/artifacts/artifact-duplicate-button'
+import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
@@ -49,6 +50,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
             <ArtifactDuplicateButton artifact={artifact} />
             <Link
               href={`/artifacts/${artifact.id}/edit`}

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Download, ChevronRight, ChevronDown } from 'lucide-react'
+import { Download, ChevronRight, ChevronDown, ClipboardCopy, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ColorsSection } from './sections/colors'
 import { TypographySection } from './sections/typography'
@@ -147,6 +147,7 @@ export function DSViewer({ tokens, components, mdSections, icons }: DSViewerProp
       {showDownload && (
         <DownloadModal
           selectedSections={selectedSections}
+          mdSections={mdSections}
           onToggle={toggleDownloadSection}
           onDownload={handleDownload}
           onClose={() => setShowDownload(false)}
@@ -428,26 +429,76 @@ const DOWNLOAD_FILES = [
   { key: 'states.md', label: 'States' },
 ]
 
+const FILE_TO_MD_KEY: Record<string, string> = {
+  'README.md': 'readme',
+  'foundations.md': 'foundations',
+  'components.md': 'components',
+  'layout.md': 'layout',
+  'motion.md': 'motion',
+  'accessibility.md': 'accessibility',
+  'icons.md': 'icons',
+  'patterns.md': 'patterns',
+  'writing.md': 'writing',
+  'do-dont.md': 'dodont',
+  'spacing.md': 'spacing',
+  'states.md': 'states',
+}
+
+function estimateTokens(selectedSections: Set<string>, mdSections: Record<string, string>): number {
+  let totalChars = 0
+  for (const fileKey of selectedSections) {
+    const mdKey = FILE_TO_MD_KEY[fileKey]
+    if (mdKey && mdSections[mdKey]) totalChars += mdSections[mdKey].length
+  }
+  return Math.ceil(totalChars / 4)
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1000) return `~${(n / 1000).toFixed(1)}k tokens`
+  return `~${n} tokens`
+}
+
 function DownloadModal({
   selectedSections,
+  mdSections,
   onToggle,
   onDownload,
   onClose,
 }: {
   selectedSections: Set<string>
+  mdSections: Record<string, string>
   onToggle: (key: string) => void
   onDownload: () => void
   onClose: () => void
 }) {
+  const [copied, setCopied] = useState(false)
+  const [copying, setCopying] = useState(false)
+  const tokenEstimate = estimateTokens(selectedSections, mdSections)
+
+  async function handleCopy() {
+    if (selectedSections.size === 0) return
+    setCopying(true)
+    try {
+      const params = Array.from(selectedSections).join(',')
+      const res = await fetch(`/api/design-system/download?sections=${params}&raw=1`)
+      const text = await res.text()
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } finally {
+      setCopying(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60" onClick={onClose} />
       <div className="relative bg-white dark:bg-night-802 rounded-xl shadow-light-xl border border-gray-200 dark:border-night-801 w-full max-w-sm mx-4 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Descargar como contexto</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Contexto para Claude Design</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Selecciona las secciones para incluir en el archivo para Claude Design.
+          Selecciona las secciones a incluir.
         </p>
-        <div className="space-y-1.5 mb-5">
+        <div className="space-y-1.5 mb-4">
           {DOWNLOAD_FILES.map((s) => (
             <label key={s.key} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-night-801 cursor-pointer">
               <input
@@ -456,16 +507,34 @@ function DownloadModal({
                 onChange={() => onToggle(s.key)}
                 className="accent-lipu-500 w-3.5 h-3.5"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">{s.label}</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{s.label}</span>
             </label>
           ))}
         </div>
+
+        {selectedSections.size > 0 && (
+          <p className="text-xs text-gray-400 text-right mb-4">
+            {formatTokens(tokenEstimate)} estimados
+          </p>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
           >
             Cancelar
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={selectedSections.size === 0 || copying}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-50 transition-colors"
+          >
+            {copied ? (
+              <><Check className="w-3.5 h-3.5 text-green-500" /><span className="text-green-600 dark:text-green-400">Copiado</span></>
+            ) : (
+              <><ClipboardCopy className="w-3.5 h-3.5" />Copiar</>
+            )}
           </button>
           <button
             onClick={onDownload}

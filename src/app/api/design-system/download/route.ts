@@ -37,11 +37,12 @@ export async function GET(request: Request) {
   }
 
   const combined = parts.join('\n')
+  const raw = searchParams.get('raw') === '1'
 
   return new NextResponse(combined, {
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="lipu-mind-design-system.md"',
+      ...(!raw && { 'Content-Disposition': 'attachment; filename="lipu-mind-design-system.md"' }),
     },
   })
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Send, Trash2, MessageSquare } from 'lucide-react'
+import { Loader2, Send, Trash2, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Comment } from '@/lib/comments'
 
@@ -46,6 +46,7 @@ interface CommentsSectionProps {
 export function CommentsSection({ artifactId }: CommentsSectionProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
   const [body, setBody] = useState('')
   const [author, setAuthor] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -115,74 +116,88 @@ export function CommentsSection({ artifactId }: CommentsSectionProps) {
 
   return (
     <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-night-801 flex items-center gap-2">
-        <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      {/* Header — toggles content */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
+      >
+        <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          <MessageSquare className="w-3.5 h-3.5" />
           Comentarios
           {comments.length > 0 && (
-            <span className="ml-2 text-gray-300 font-normal normal-case tracking-normal">{comments.length}</span>
+            <span className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-night-801 text-gray-500">
+              {comments.length}
+            </span>
           )}
         </h2>
-      </div>
-
-      {/* Comments list */}
-      <div className="px-5 py-4 space-y-4 max-h-96 overflow-y-auto">
-        {loading ? (
-          <div className="flex justify-center py-6">
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          </div>
-        ) : comments.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-6 italic">
-            Sin comentarios. Sé el primero en agregar feedback.
-          </p>
+        {open ? (
+          <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
         ) : (
-          comments.map((comment) => (
-            <CommentBubble
-              key={comment.id}
-              comment={comment}
-              canDelete={myCommentIds.has(comment.id)}
-              deleting={deletingId === comment.id}
-              onDelete={() => handleDelete(comment.id)}
-            />
-          ))
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
         )}
-        <div ref={bottomRef} />
-      </div>
+      </button>
 
-      {/* Compose */}
-      <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-night-801">
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <input
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Tu nombre (opcional)"
-            className={cn(inputClass, 'text-xs py-1.5')}
-          />
-          <div className="flex gap-2">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e as any)
-              }}
-              placeholder="Escribe un comentario... (Cmd+Enter para enviar)"
-              rows={3}
-              className={cn(inputClass, 'resize-none flex-1')}
-            />
-            <button
-              type="submit"
-              disabled={!body.trim() || submitting}
-              className="self-end flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium disabled:opacity-50 transition-colors shrink-0"
-            >
-              {submitting
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Send className="w-3.5 h-3.5" />
-              }
-            </button>
+      {open && (
+        <>
+          {/* Comments list */}
+          <div className="px-5 py-4 space-y-4 max-h-96 overflow-y-auto border-t border-gray-100 dark:border-night-801">
+            {loading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              </div>
+            ) : comments.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-6 italic">
+                Sin comentarios. Sé el primero en agregar feedback.
+              </p>
+            ) : (
+              comments.map((comment) => (
+                <CommentBubble
+                  key={comment.id}
+                  comment={comment}
+                  canDelete={myCommentIds.has(comment.id)}
+                  deleting={deletingId === comment.id}
+                  onDelete={() => handleDelete(comment.id)}
+                />
+              ))
+            )}
+            <div ref={bottomRef} />
           </div>
-        </form>
-      </div>
+
+          {/* Compose */}
+          <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-night-801">
+            <form onSubmit={handleSubmit} className="space-y-2">
+              <input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Tu nombre (opcional)"
+                className={cn(inputClass, 'text-xs py-1.5')}
+              />
+              <div className="flex gap-2">
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e as any)
+                  }}
+                  placeholder="Escribe un comentario... (Cmd+Enter para enviar)"
+                  rows={3}
+                  className={cn(inputClass, 'resize-none flex-1')}
+                />
+                <button
+                  type="submit"
+                  disabled={!body.trim() || submitting}
+                  className="self-end flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium disabled:opacity-50 transition-colors shrink-0"
+                >
+                  {submitting
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Send className="w-3.5 h-3.5" />
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   )
 }

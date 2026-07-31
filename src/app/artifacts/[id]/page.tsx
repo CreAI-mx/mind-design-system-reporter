@@ -7,6 +7,7 @@ import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-but
 import { ArtifactDuplicateButton } from '@/components/artifacts/artifact-duplicate-button'
 import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
 import { CommentsSection } from '@/components/artifacts/comments-section'
+import { SessionNotesSection } from '@/components/artifacts/session-notes-section'
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
@@ -39,16 +40,13 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
       {/* Header */}
       <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0">
             {mod && (
               <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', groupConfig?.color)}>
                 {groupConfig?.label} · {mod.label}
               </p>
             )}
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{artifact.name || 'Sin nombre'}</h1>
-            {artifact.description && (
-              <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">{artifact.description}</p>
-            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
@@ -72,6 +70,12 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
             <ArtifactDeleteButton id={artifact.id} />
           </div>
         </div>
+
+        {artifact.description && (
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400 break-words whitespace-pre-wrap">
+            {artifact.description}
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-3 items-center">
           <StatusBadge status={artifact.status} />
@@ -175,6 +179,9 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
           </div>
         </Section>
       )}
+
+      {/* Session notes */}
+      <SessionNotesSection artifactId={artifact.id} />
 
       {/* Comments */}
       <CommentsSection artifactId={artifact.id} />

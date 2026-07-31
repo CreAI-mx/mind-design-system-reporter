@@ -11,6 +11,46 @@ import { formatDate, cn } from '@/lib/utils'
 
 type DiffLine = { type: 'same' | 'added' | 'removed'; text: string }
 
+type SideCell = { lineNo: number | null; text: string; type: 'same' | 'added' | 'removed' | 'empty' }
+type SideBySideRow = { left: SideCell; right: SideCell }
+
+function buildSideBySide(diff: DiffLine[]): SideBySideRow[] {
+  const rows: SideBySideRow[] = []
+  let leftN = 0, rightN = 0
+  let i = 0
+
+  while (i < diff.length) {
+    if (diff[i].type === 'same') {
+      leftN++; rightN++
+      rows.push({
+        left:  { lineNo: leftN,  text: diff[i].text, type: 'same' },
+        right: { lineNo: rightN, text: diff[i].text, type: 'same' },
+      })
+      i++
+    } else {
+      const removed: string[] = []
+      const added: string[] = []
+      while (i < diff.length && diff[i].type !== 'same') {
+        if (diff[i].type === 'removed') removed.push(diff[i].text)
+        else added.push(diff[i].text)
+        i++
+      }
+      const len = Math.max(removed.length, added.length)
+      for (let j = 0; j < len; j++) {
+        const hasL = j < removed.length
+        const hasR = j < added.length
+        if (hasL) leftN++
+        if (hasR) rightN++
+        rows.push({
+          left:  hasL ? { lineNo: leftN,  text: removed[j], type: 'removed' } : { lineNo: null, text: '', type: 'empty' },
+          right: hasR ? { lineNo: rightN, text: added[j],   type: 'added'   } : { lineNo: null, text: '', type: 'empty' },
+        })
+      }
+    }
+  }
+  return rows
+}
+
 function diffLines(oldStr: string, newStr: string): DiffLine[] {
   const oldLines = (oldStr ?? '').split('\n')
   const newLines = (newStr ?? '').split('\n')
@@ -82,7 +122,7 @@ export function CompareView({ artifact, parent }: CompareViewProps) {
   const removedLines = codeDiff.filter((l) => l.type === 'removed').length
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
       {/* Back */}
       <Link
         href={`/artifacts/${artifact.id}`}
@@ -198,21 +238,104 @@ export function CompareView({ artifact, parent }: CompareViewProps) {
         </Section>
       )}
 
-      {/* Code diff */}
+      {/* Code side by side */}
       {hasCodeChange && (
-        <Section title="Código">
-          {codeDiff.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">Sin contenido en ambas versiones</p>
-          ) : (
-            <CodeDiff lines={codeDiff} />
-          )}
-        </Section>
+        <SideBySideCodeView parent={parent} artifact={artifact} codeDiff={codeDiff} />
       )}
     </div>
   )
 }
 
 /* ── Sub-components ───────────────────────────────────────── */
+
+function SideBySideCodeView({
+  parent,
+  artifact,
+  codeDiff,
+}: {
+  parent: Artifact
+  artifact: Artifact
+  codeDiff: DiffLine[]
+}) {
+  const rows = buildSideBySide(codeDiff)
+
+  const Panel = ({
+    version,
+    label,
+    side,
+  }: {
+    version: string
+    label: string
+    side: 'left' | 'right'
+  }) => (
+    <div className="flex flex-col min-w-0">
+      <div className="px-4 py-2 bg-[#161616] border-b border-gray-700 flex items-center gap-2 shrink-0">
+        <span className="text-xs text-gray-400 font-mono">v{version}</span>
+        <span className={cn(
+          'text-[10px] px-1.5 py-0.5 rounded font-medium',
+          side === 'left'
+            ? 'bg-red-900/40 text-red-400'
+            : 'bg-green-900/40 text-green-400'
+        )}>
+          {label}
+        </span>
+      </div>
+      <div className="h-[480px] overflow-y-auto overflow-x-auto bg-[#1e1e1e]">
+        <table className="border-collapse text-xs font-mono leading-5">
+          <tbody>
+            {rows.map((row, i) => {
+              const cell = side === 'left' ? row.left : row.right
+              return (
+                <tr
+                  key={i}
+                  className={cn(
+                    cell.type === 'removed' && 'bg-red-900/25',
+                    cell.type === 'added'   && 'bg-green-900/25',
+                    cell.type === 'empty'   && 'bg-[#191919]',
+                  )}
+                >
+                  <td className="select-none text-right pr-3 pl-4 py-px text-gray-600 w-10 border-r border-gray-700/60 shrink-0">
+                    {cell.lineNo ?? ''}
+                  </td>
+                  <td className="select-none px-2 py-px w-5 shrink-0">
+                    <span className={cn(
+                      cell.type === 'removed' && 'text-red-400',
+                      cell.type === 'added'   && 'text-green-400',
+                      (cell.type === 'same' || cell.type === 'empty') && 'text-gray-700',
+                    )}>
+                      {cell.type === 'removed' ? '-' : cell.type === 'added' ? '+' : ' '}
+                    </span>
+                  </td>
+                  <td className={cn(
+                    'py-px pr-6 whitespace-pre',
+                    cell.type === 'removed' && 'text-red-300/80',
+                    cell.type === 'added'   && 'text-green-200',
+                    cell.type === 'same'    && 'text-gray-300',
+                    cell.type === 'empty'   && 'text-transparent select-none',
+                  )}>
+                    {cell.text || ' '}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 overflow-hidden">
+      <div className="px-5 py-3 border-b border-gray-100 dark:border-night-801">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Código</h2>
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-gray-700 overflow-hidden">
+        <Panel version={parent.version}   label="anterior" side="left"  />
+        <Panel version={artifact.version} label="actual"   side="right" />
+      </div>
+    </div>
+  )
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -257,57 +380,3 @@ function DiffBlock({ lines }: { lines: DiffLine[] }) {
   )
 }
 
-function CodeDiff({ lines }: { lines: DiffLine[] }) {
-  let oldN = 0, newN = 0
-
-  return (
-    <div className="not-prose overflow-x-auto rounded-xl bg-[#1e1e1e] border border-gray-700 text-xs font-mono leading-5">
-      <table className="w-full border-collapse">
-        <tbody>
-          {lines.map((line, i) => {
-            if (line.type === 'removed') oldN++
-            else if (line.type === 'added') newN++
-            else { oldN++; newN++ }
-
-            const currentOld = line.type !== 'added' ? oldN : null
-            const currentNew = line.type !== 'removed' ? newN : null
-
-            return (
-              <tr
-                key={i}
-                className={cn(
-                  line.type === 'added' && 'bg-green-900/30',
-                  line.type === 'removed' && 'bg-red-900/30',
-                )}
-              >
-                <td className="select-none text-right pr-3 pl-4 py-px text-gray-600 w-10 border-r border-gray-700">
-                  {currentOld ?? ''}
-                </td>
-                <td className="select-none text-right pr-3 py-px text-gray-600 w-10 border-r border-gray-700">
-                  {currentNew ?? ''}
-                </td>
-                <td className="select-none px-2 py-px w-4">
-                  <span className={cn(
-                    line.type === 'added' && 'text-green-400',
-                    line.type === 'removed' && 'text-red-400',
-                    line.type === 'same' && 'text-gray-600',
-                  )}>
-                    {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
-                  </span>
-                </td>
-                <td className={cn(
-                  'py-px pr-4 whitespace-pre',
-                  line.type === 'added' && 'text-green-200',
-                  line.type === 'removed' && 'text-red-300 opacity-75',
-                  line.type === 'same' && 'text-gray-300',
-                )}>
-                  {line.text || ' '}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-}

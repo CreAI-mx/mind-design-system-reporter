@@ -32,6 +32,15 @@ export interface ArtifactsData {
   artifacts: Artifact[]
 }
 
+export interface SessionNote {
+  id: string
+  artifactId: string
+  sessionName: string
+  sessionDate: string
+  notes: string
+  createdAt: string
+}
+
 export const STATUS_CONFIG: Record<ArtifactStatus, { label: string; color: string }> = {
   borrador: {
     label: 'Borrador',

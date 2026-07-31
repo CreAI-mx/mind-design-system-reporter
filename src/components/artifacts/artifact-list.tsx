@@ -3,10 +3,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import Fuse from 'fuse.js'
-import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2 } from 'lucide-react'
+import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2, LayoutList, Columns3 } from 'lucide-react'
 import type { Artifact, ArtifactStatus, ModuleGroup } from '@/lib/types'
 import { MODULES, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from './status-badge'
+import { ArtifactKanban } from './artifact-kanban'
 import { formatDate, cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -83,6 +84,7 @@ export function ArtifactList() {
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState(false)
+  const [view, setView] = useState<'list' | 'kanban'>('list')
 
   useEffect(() => {
     fetch('/api/artifacts')
@@ -164,6 +166,15 @@ export function ArtifactList() {
     } else {
       setSelectedIds((prev) => new Set([...prev, ...paginated.map((a) => a.id)]))
     }
+  }
+
+  async function handleKanbanStatusChange(id: string, status: ArtifactStatus) {
+    await fetch(`/api/artifacts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    setArtifacts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
   }
 
   async function applyBulk(operation: 'status' | 'addTag', value: string) {
@@ -273,6 +284,34 @@ export function ArtifactList() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* View toggle */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+            <button
+              onClick={() => setView('list')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-2 text-sm transition-colors',
+                view === 'list'
+                  ? 'bg-lipu-500 text-lipu-text'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-night-801'
+              )}
+              title="Vista lista"
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setView('kanban')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-2 text-sm border-l border-gray-200 dark:border-gray-600 transition-colors',
+                view === 'kanban'
+                  ? 'bg-lipu-500 text-lipu-text'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-night-801'
+              )}
+              title="Vista kanban"
+            >
+              <Columns3 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           <Link
             href="/artifacts/dashboard"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
@@ -336,96 +375,102 @@ export function ArtifactList() {
         </div>
       )}
 
-      {/* Results count + select all */}
-      <div className="px-6 py-2 flex items-center gap-3">
-        {paginated.length > 0 && (
-          <input
-            type="checkbox"
-            checked={allPageSelected}
-            ref={(el) => { if (el) el.indeterminate = somePageSelected && !allPageSelected }}
-            onChange={toggleSelectPage}
-            className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer shrink-0"
-            title={allPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
-          />
-        )}
-        <span className="text-xs text-gray-400">
-          {sorted.length === 0
-            ? '0 artifacts'
-            : totalPages > 1
-              ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, sorted.length)} de ${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`
-              : `${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`}
-        </span>
-        {hasFilters && <span className="text-xs text-gray-400">· filtrado de {artifacts.length}</span>}
-      </div>
-
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-6 pb-4">
-        {paginated.length === 0 ? (
-          <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} />
-        ) : (
-          <div className="space-y-2">
-            {paginated.map((artifact) => (
-              <ArtifactRow
-                key={artifact.id}
-                artifact={artifact}
-                onTagClick={setTagFilter}
-                selected={selectedIds.has(artifact.id)}
-                onToggleSelect={toggleSelect}
+      {view === 'kanban' ? (
+        <ArtifactKanban artifacts={filtered} onStatusChange={handleKanbanStatusChange} />
+      ) : (
+        <>
+          {/* Results count + select all */}
+          <div className="px-6 py-2 flex items-center gap-3">
+            {paginated.length > 0 && (
+              <input
+                type="checkbox"
+                checked={allPageSelected}
+                ref={(el) => { if (el) el.indeterminate = somePageSelected && !allPageSelected }}
+                onChange={toggleSelectPage}
+                className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer shrink-0"
+                title={allPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
               />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="px-6 py-3 border-t border-gray-200 dark:border-night-801 flex items-center justify-between">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            Anterior
-          </button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-              .reduce<(number | '…')[]>((acc, p, i, arr) => {
-                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('…')
-                acc.push(p)
-                return acc
-              }, [])
-              .map((p, i) =>
-                p === '…' ? (
-                  <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">…</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p as number)}
-                    className={cn(
-                      'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
-                      page === p
-                        ? 'bg-lipu-500 text-lipu-text'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-night-801'
-                    )}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
+            )}
+            <span className="text-xs text-gray-400">
+              {sorted.length === 0
+                ? '0 artifacts'
+                : totalPages > 1
+                  ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, sorted.length)} de ${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`
+                  : `${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`}
+            </span>
+            {hasFilters && <span className="text-xs text-gray-400">· filtrado de {artifacts.length}</span>}
           </div>
 
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Siguiente
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+          {/* List */}
+          <div className="flex-1 overflow-y-auto px-6 pb-4">
+            {paginated.length === 0 ? (
+              <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} />
+            ) : (
+              <div className="space-y-2">
+                {paginated.map((artifact) => (
+                  <ArtifactRow
+                    key={artifact.id}
+                    artifact={artifact}
+                    onTagClick={setTagFilter}
+                    selected={selectedIds.has(artifact.id)}
+                    onToggleSelect={toggleSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-3 border-t border-gray-200 dark:border-night-801 flex items-center justify-between">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Anterior
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | '…')[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('…')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, i) =>
+                    p === '…' ? (
+                      <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p as number)}
+                        className={cn(
+                          'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
+                          page === p
+                            ? 'bg-lipu-500 text-lipu-text'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-night-801'
+                        )}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+              </div>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

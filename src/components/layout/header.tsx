@@ -5,7 +5,8 @@ import { Menu } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 
 const TITLES: Record<string, string> = {
-  '/': 'Design System',
+  '/': 'Inicio',
+  '/design-system': 'Design System',
   '/artifacts': 'Artifacts',
   '/artifacts/new': 'Nuevo Artifact',
 }

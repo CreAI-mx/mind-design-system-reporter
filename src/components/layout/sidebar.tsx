@@ -6,7 +6,7 @@ import { BookOpen, Layers, LayoutDashboard, BarChart3, Archive, X } from 'lucide
 import { cn } from '@/lib/utils'
 
 const NAV = [
-  { href: '/', label: 'Design System', icon: BookOpen },
+  { href: '/design-system', label: 'Design System', icon: BookOpen },
   { href: '/artifacts', label: 'Artifacts', icon: Layers },
   { href: '/artifacts/dashboard', label: 'Progreso', icon: BarChart3, sub: true },
   { href: '/artifacts/archive', label: 'Archivo', icon: Archive, sub: true },
@@ -35,13 +35,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     >
       {/* Logo + close button (close only shown on mobile) */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200 dark:border-night-801">
-        <div className="w-7 h-7 rounded-lg bg-lipu-600 flex items-center justify-center shrink-0">
-          <LayoutDashboard className="w-4 h-4 text-gray-900" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">LIPU Mind</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">DS Reporter</p>
-        </div>
+        <Link href="/" onClick={onClose} className="flex items-center gap-2 min-w-0 flex-1 group">
+          <div className="w-7 h-7 rounded-lg bg-lipu-600 flex items-center justify-center shrink-0 group-hover:bg-lipu-700 transition-colors">
+            <LayoutDashboard className="w-4 h-4 text-gray-900" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none">LIPU Mind</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">DS Reporter</p>
+          </div>
+        </Link>
         <button
           onClick={onClose}
           className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
@@ -54,7 +56,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV.map(({ href, label, icon: Icon, sub }) => {
-          const active = href === '/' ? pathname === '/' : pathname === href
+          const active = pathname === href || (href === '/design-system' && pathname.startsWith('/design-system'))
           return (
             <Link
               key={href}

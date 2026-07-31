@@ -31,10 +31,16 @@
 
 The two `.json` files are the intended data source for the external reference site's API routes — read them directly rather than re-parsing the Markdown. The `.md` files are the human-readable narrative version of the same data, with the "why it's like this" context the JSON doesn't carry (inconsistency notes, dead code, informal tiers). Building the actual reference site (Next.js, hosting, deploy) is out of scope for this folder — this is the source of truth it reads from, kept inside the repo so it changes in the same PR as the code it describes.
 
-## Related docs
+## Component reference: Flowbite
 
-- `docs/auditoria-ux-ui-2026-06-29.md` — the living UX/a11y gap tracker. `accessibility.md` summarizes and links to it rather than duplicating it; update the audit doc directly when an AC-item gets fixed.
-- `docs/CONTEXT.md` §6 — known quirks. The inconsistencies flagged throughout this folder (dual fonts, unscaled z-index, unused `lipu-overlay-z.js`) are candidates worth cross-referencing there if the team decides not to fix them soon.
+The team uses **[Flowbite](https://flowbite.com)** as the primary component reference when building new UI. Flowbite is a Tailwind-based component library — its component structure, layout patterns, and interaction conventions are the starting point; the LIPU Mind design tokens (colors, shadows, typography defined in `tokens.json`) override Flowbite's defaults.
+
+**What this means when creating designs with Claude Design:**
+- Follow Flowbite's component structure and HTML/JSX patterns as the base.
+- Apply LIPU Mind tokens instead of Flowbite's default palette: use `lipu-500/600` (brand), `night-801/802/803` (dark surfaces), and the semantic colors from `tokens.json`.
+- Refer to `foundations.md` for the color, typography, and shadow values to use in place of Flowbite defaults.
+- Refer to `components.md` for any component that already has a LIPU Mind-specific variant — those take precedence over the generic Flowbite pattern.
+- Flowbite component docs live at **https://flowbite.com/docs/components/** — reference them for structure (markup, states, variants) but always substitute the project's tokens.
 
 ## Keeping this current
 

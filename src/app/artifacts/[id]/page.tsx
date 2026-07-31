@@ -38,8 +38,8 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
 
       {/* Header */}
       <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1 min-w-0">
             {mod && (
               <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', groupConfig?.color)}>
                 {groupConfig?.label} · {mod.label}
@@ -50,7 +50,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
               <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400">{artifact.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
             {parent && (
               <Link
@@ -180,7 +180,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
       <CommentsSection artifactId={artifact.id} />
 
       {/* Meta */}
-      <div className="text-[10px] text-gray-400 flex gap-4 pb-4">
+      <div className="text-[10px] text-gray-400 flex flex-wrap gap-4 pb-4">
         <span>Creado: {new Date(artifact.createdAt).toLocaleString('es-MX')}</span>
         <span>Actualizado: {new Date(artifact.updatedAt).toLocaleString('es-MX')}</span>
       </div>

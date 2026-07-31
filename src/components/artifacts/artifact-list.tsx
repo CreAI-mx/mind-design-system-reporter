@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import Fuse from 'fuse.js'
-import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3 } from 'lucide-react'
+import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2 } from 'lucide-react'
 import type { Artifact, ArtifactStatus, ModuleGroup } from '@/lib/types'
 import { MODULES, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from './status-badge'
@@ -81,6 +81,8 @@ export function ArtifactList() {
   const [tagFilter, setTagFilter] = useState('')
   const [sort, setSort] = useState<SortKey>('date-desc')
   const [page, setPage] = useState(1)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [applying, setApplying] = useState(false)
 
   useEffect(() => {
     fetch('/api/artifacts')
@@ -139,6 +141,53 @@ export function ArtifactList() {
     setGroupFilter('')
     setModuleFilter('')
     setTagFilter('')
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const allPageSelected = paginated.length > 0 && paginated.every((a) => selectedIds.has(a.id))
+  const somePageSelected = paginated.some((a) => selectedIds.has(a.id))
+
+  function toggleSelectPage() {
+    if (allPageSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        paginated.forEach((a) => next.delete(a.id))
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...paginated.map((a) => a.id)]))
+    }
+  }
+
+  async function applyBulk(operation: 'status' | 'addTag', value: string) {
+    if (!selectedIds.size || applying || !value) return
+    setApplying(true)
+    try {
+      const res = await fetch('/api/artifacts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...selectedIds], operation, value }),
+      })
+      if (!res.ok) throw new Error()
+      setArtifacts((prev) =>
+        prev.map((a) => {
+          if (!selectedIds.has(a.id)) return a
+          if (operation === 'status') return { ...a, status: value as ArtifactStatus }
+          if (operation === 'addTag' && !a.tags.includes(value)) return { ...a, tags: [...a.tags, value] }
+          return a
+        })
+      )
+      setSelectedIds(new Set())
+    } finally {
+      setApplying(false)
+    }
   }
 
   if (loading) {
@@ -248,8 +297,57 @@ export function ArtifactList() {
         </div>
       </div>
 
-      {/* Results count */}
-      <div className="px-6 py-2 flex items-center gap-2">
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="px-6 py-2.5 bg-lipu-600/5 dark:bg-lipu-600/10 border-b border-lipu-500/20 flex items-center gap-3 flex-wrap">
+          {applying && <Loader2 className="w-3.5 h-3.5 animate-spin text-lipu-500 shrink-0" />}
+          <span className="text-xs font-semibold text-lipu-500 shrink-0">
+            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+          </span>
+          <select
+            defaultValue=""
+            onChange={(e) => { if (e.target.value) { applyBulk('status', e.target.value); e.target.value = '' } }}
+            disabled={applying}
+            className="px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 disabled:opacity-50 transition-colors"
+          >
+            <option value="">Cambiar status...</option>
+            {STATUS_OPTIONS.filter((o) => o.value).map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          {allTags.length > 0 && (
+            <select
+              defaultValue=""
+              onChange={(e) => { if (e.target.value) { applyBulk('addTag', e.target.value); e.target.value = '' } }}
+              disabled={applying}
+              className="px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 disabled:opacity-50 transition-colors"
+            >
+              <option value="">Agregar etiqueta...</option>
+              {allTags.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
+      {/* Results count + select all */}
+      <div className="px-6 py-2 flex items-center gap-3">
+        {paginated.length > 0 && (
+          <input
+            type="checkbox"
+            checked={allPageSelected}
+            ref={(el) => { if (el) el.indeterminate = somePageSelected && !allPageSelected }}
+            onChange={toggleSelectPage}
+            className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer shrink-0"
+            title={allPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
+          />
+        )}
         <span className="text-xs text-gray-400">
           {sorted.length === 0
             ? '0 artifacts'
@@ -267,7 +365,13 @@ export function ArtifactList() {
         ) : (
           <div className="space-y-2">
             {paginated.map((artifact) => (
-              <ArtifactRow key={artifact.id} artifact={artifact} onTagClick={setTagFilter} />
+              <ArtifactRow
+                key={artifact.id}
+                artifact={artifact}
+                onTagClick={setTagFilter}
+                selected={selectedIds.has(artifact.id)}
+                onToggleSelect={toggleSelect}
+              />
             ))}
           </div>
         )}
@@ -327,15 +431,32 @@ export function ArtifactList() {
   )
 }
 
-function ArtifactRow({ artifact, onTagClick }: { artifact: Artifact; onTagClick?: (tag: string) => void }) {
+function ArtifactRow({
+  artifact,
+  onTagClick,
+  selected,
+  onToggleSelect,
+}: {
+  artifact: Artifact
+  onTagClick?: (tag: string) => void
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
+}) {
   const mod = MODULES.find((m) => m.key === artifact.module)
   const group = mod?.group
   const groupConfig = group ? MODULE_GROUPS[group] : null
 
   return (
+    <div className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={selected ?? false}
+        onChange={() => onToggleSelect?.(artifact.id)}
+        className="w-3.5 h-3.5 accent-lipu-500 shrink-0 cursor-pointer"
+      />
     <Link
       href={`/artifacts/${artifact.id}`}
-      className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 hover:border-lipu-500/40 hover:shadow-light-sm transition-all group"
+      className="flex-1 flex items-center gap-4 px-4 py-3 bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 hover:border-lipu-500/40 hover:shadow-light-sm transition-all group"
     >
       <div className="w-36 shrink-0">
         {mod ? (
@@ -387,6 +508,7 @@ function ArtifactRow({ artifact, onTagClick }: { artifact: Artifact; onTagClick?
         <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-lipu-500 transition-colors" />
       </div>
     </Link>
+    </div>
   )
 }
 

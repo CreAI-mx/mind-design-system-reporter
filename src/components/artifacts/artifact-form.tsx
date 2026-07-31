@@ -8,6 +8,7 @@ import type { Artifact, ArtifactStatus } from '@/lib/types'
 import { MODULES, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from './status-badge'
 import { TagInput } from './tag-input'
+import { ArtifactPicker } from './artifact-picker'
 import { cn } from '@/lib/utils'
 
 type FormData = Omit<Artifact, 'id' | 'createdAt' | 'updatedAt'>
@@ -25,6 +26,7 @@ const EMPTY: FormData = {
   codeUrl: '',
   imageUrls: [],
   date: new Date().toISOString().split('T')[0],
+  parentId: undefined,
 }
 
 const STATUSES: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
@@ -52,6 +54,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
           codeUrl: initial.codeUrl,
           imageUrls: initial.imageUrls,
           date: initial.date,
+          parentId: initial.parentId,
         }
       : EMPTY
   )
@@ -199,6 +202,19 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
             className={inputClass}
           />
         </Field>
+      </section>
+
+      {/* Version link */}
+      <section className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5 space-y-3">
+        <div>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Versión de (opcional)</h2>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Vincula este artifact a una versión anterior del mismo componente.</p>
+        </div>
+        <ArtifactPicker
+          value={form.parentId ?? ''}
+          onChange={(id) => update('parentId', id || undefined)}
+          excludeId={initial?.id}
+        />
       </section>
 
       {/* Tags */}

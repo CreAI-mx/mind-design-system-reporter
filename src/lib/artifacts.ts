@@ -18,6 +18,7 @@ function toArtifact(row: Record<string, unknown>): Artifact {
     date: row.date as string,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
+    parentId: (row.parent_id as string | null) ?? undefined,
   }
 }
 
@@ -38,6 +39,7 @@ function toRow(artifact: Artifact) {
     date: artifact.date,
     created_at: artifact.createdAt,
     updated_at: artifact.updatedAt,
+    parent_id: artifact.parentId ?? null,
   }
 }
 
@@ -84,6 +86,7 @@ export async function updateArtifact(id: string, updates: Partial<Artifact>): Pr
   if (updates.codeUrl !== undefined) partial.code_url = updates.codeUrl
   if (updates.imageUrls !== undefined) partial.image_urls = updates.imageUrls
   if (updates.date !== undefined) partial.date = updates.date
+  if (updates.parentId !== undefined) partial.parent_id = updates.parentId || null
 
   const { data, error } = await supabase
     .from('artifacts')
@@ -93,6 +96,16 @@ export async function updateArtifact(id: string, updates: Partial<Artifact>): Pr
     .single()
   if (error) throw error
   return toArtifact(data)
+}
+
+export async function getArtifactsByParentId(parentId: string): Promise<Artifact[]> {
+  const { data, error } = await supabase
+    .from('artifacts')
+    .select('*')
+    .eq('parent_id', parentId)
+    .order('date', { ascending: true })
+  if (error) return []
+  return (data ?? []).map(toArtifact)
 }
 
 export async function deleteArtifact(id: string): Promise<void> {

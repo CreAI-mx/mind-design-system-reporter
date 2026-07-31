@@ -6,6 +6,13 @@ import { Copy, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import type { Artifact } from '@/lib/types'
 
+function bumpVersion(version: string): string {
+  const parts = version.split('.')
+  const last = parseInt(parts[parts.length - 1] ?? '0', 10)
+  parts[parts.length - 1] = String(isNaN(last) ? 1 : last + 1)
+  return parts.join('.')
+}
+
 export function ArtifactDuplicateButton({ artifact }: { artifact: Artifact }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -14,13 +21,14 @@ export function ArtifactDuplicateButton({ artifact }: { artifact: Artifact }) {
   async function handleDuplicate() {
     setLoading(true)
     try {
+      const nextVersion = bumpVersion(artifact.version)
       const res = await fetch('/api/artifacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: `Copia de ${artifact.name}`,
+          name: artifact.name,
           module: artifact.module,
-          version: artifact.version,
+          version: nextVersion,
           versionNote: '',
           status: 'borrador',
           description: artifact.description,
@@ -30,6 +38,7 @@ export function ArtifactDuplicateButton({ artifact }: { artifact: Artifact }) {
           codeUrl: artifact.codeUrl,
           imageUrls: artifact.imageUrls,
           date: new Date().toISOString().split('T')[0],
+          parentId: artifact.id,
         }),
       })
       if (!res.ok) throw new Error()

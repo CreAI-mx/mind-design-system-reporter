@@ -25,6 +25,7 @@ export interface Artifact {
   date: string
   createdAt: string
   updatedAt: string
+  parentId?: string
 }
 
 export interface ArtifactsData {

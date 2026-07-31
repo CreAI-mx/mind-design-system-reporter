@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     date: body.date ?? now.split('T')[0],
     createdAt: now,
     updatedAt: now,
+    parentId: body.parentId ?? undefined,
   }
 
   const saved = await createArtifact(artifact)

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getArtifact } from '@/lib/artifacts'
+import { getArtifact, getArtifactsByParentId } from '@/lib/artifacts'
 import { getModule, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from '@/components/artifacts/status-badge'
 import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-button'
@@ -8,7 +8,7 @@ import { ArtifactDuplicateButton } from '@/components/artifacts/artifact-duplica
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
-import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft } from 'lucide-react'
+import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +16,11 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
   const { id } = await params
   const artifact = await getArtifact(id)
   if (!artifact) notFound()
+
+  const [parent, children] = await Promise.all([
+    artifact.parentId ? getArtifact(artifact.parentId) : Promise.resolve(null),
+    getArtifactsByParentId(id),
+  ])
 
   const mod = getModule(artifact.module)
   const group = mod?.group
@@ -130,6 +135,35 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
         />
       )}
 
+      {/* Version history */}
+      {(parent || children.length > 0) && (
+        <Section title="Historial de versiones" icon={<GitBranch className="w-3.5 h-3.5" />}>
+          <div className="space-y-2">
+            {parent && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs text-gray-400 w-24 shrink-0">Versión anterior</span>
+                <VersionCard artifact={parent} />
+              </div>
+            )}
+            {(parent && children.length > 0) && (
+              <div className="border-t border-gray-100 dark:border-night-801 pt-3" />
+            )}
+            {children.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-gray-400 w-24 shrink-0 mt-2">
+                  {children.length === 1 ? 'Versión siguiente' : 'Versiones siguientes'}
+                </span>
+                <div className="flex-1 space-y-2">
+                  {children.map((child) => (
+                    <VersionCard key={child.id} artifact={child} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Section>
+      )}
+
       {/* Meta */}
       <div className="text-[10px] text-gray-400 flex gap-4 pb-4">
         <span>Creado: {new Date(artifact.createdAt).toLocaleString('es-MX')}</span>
@@ -148,6 +182,24 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
       </h2>
       {children}
     </div>
+  )
+}
+
+function VersionCard({ artifact }: { artifact: import('@/lib/types').Artifact }) {
+  const mod = getModule(artifact.module)
+  return (
+    <Link
+      href={`/artifacts/${artifact.id}`}
+      className="flex items-center gap-3 flex-1 px-3 py-2 rounded-lg border border-gray-200 dark:border-night-801 hover:border-lipu-500/40 hover:bg-gray-50 dark:hover:bg-night-801 transition-all group"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{artifact.name}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {mod?.label ?? artifact.module} · v{artifact.version} · {formatDate(artifact.date)}
+        </p>
+      </div>
+      <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-lipu-500 transition-colors shrink-0" />
+    </Link>
   )
 }
 

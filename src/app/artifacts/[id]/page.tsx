@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/artifacts/status-badge'
 import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-button'
 import { ArtifactDuplicateButton } from '@/components/artifacts/artifact-duplicate-button'
 import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
+import { CommentsSection } from '@/components/artifacts/comments-section'
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
@@ -174,6 +175,9 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
           </div>
         </Section>
       )}
+
+      {/* Comments */}
+      <CommentsSection artifactId={artifact.id} />
 
       {/* Meta */}
       <div className="text-[10px] text-gray-400 flex gap-4 pb-4">

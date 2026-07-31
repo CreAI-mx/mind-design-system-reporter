@@ -5,6 +5,39 @@ import { FileText, Plus, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-
 import { cn } from '@/lib/utils'
 import type { SessionNote } from '@/lib/types'
 
+const TOKEN_KEY = 'mind_session_token'
+const MY_NOTES_KEY = 'mind_my_session_notes'
+
+function getBrowserToken(): string {
+  let token = localStorage.getItem(TOKEN_KEY)
+  if (!token) {
+    token = crypto.randomUUID()
+    localStorage.setItem(TOKEN_KEY, token)
+  }
+  return token
+}
+
+function getMyNoteIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(MY_NOTES_KEY)
+    return new Set(raw ? JSON.parse(raw) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function saveMyNoteId(id: string) {
+  const ids = getMyNoteIds()
+  ids.add(id)
+  localStorage.setItem(MY_NOTES_KEY, JSON.stringify([...ids]))
+}
+
+function removeMyNoteId(id: string) {
+  const ids = getMyNoteIds()
+  ids.delete(id)
+  localStorage.setItem(MY_NOTES_KEY, JSON.stringify([...ids]))
+}
+
 const inputClass =
   'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-night-801 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-lipu-500 focus:ring-2 focus:ring-lipu-500/20 transition-colors'
 
@@ -16,6 +49,7 @@ export function SessionNotesSection({ artifactId }: Props) {
   const [notes, setNotes] = useState<SessionNote[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
+  const [myNoteIds, setMyNoteIds] = useState<Set<string>>(new Set())
 
   const [sessionName, setSessionName] = useState('')
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0])
@@ -24,6 +58,7 @@ export function SessionNotesSection({ artifactId }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
+    setMyNoteIds(getMyNoteIds())
     fetch(`/api/artifacts/${artifactId}/session-notes`)
       .then((r) => r.json())
       .then((data) => { setNotes(data); setLoading(false) })
@@ -34,14 +69,17 @@ export function SessionNotesSection({ artifactId }: Props) {
     e.preventDefault()
     if (!sessionName.trim() || !noteText.trim()) return
     setSaving(true)
+    const token = getBrowserToken()
     try {
       const res = await fetch(`/api/artifacts/${artifactId}/session-notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionName, sessionDate, notes: noteText }),
+        body: JSON.stringify({ sessionName, sessionDate, notes: noteText, browserToken: token }),
       })
       if (!res.ok) throw new Error()
       const created: SessionNote = await res.json()
+      saveMyNoteId(created.id)
+      setMyNoteIds((prev) => new Set([...prev, created.id]))
       setNotes((prev) => [created, ...prev])
       setSessionName('')
       setNoteText('')
@@ -53,9 +91,17 @@ export function SessionNotesSection({ artifactId }: Props) {
 
   async function handleDelete(id: string) {
     setDeletingId(id)
+    const token = getBrowserToken()
     try {
-      await fetch(`/api/artifacts/${artifactId}/session-notes/${id}`, { method: 'DELETE' })
-      setNotes((prev) => prev.filter((n) => n.id !== id))
+      const res = await fetch(`/api/artifacts/${artifactId}/session-notes/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-session-token': token },
+      })
+      if (res.ok) {
+        removeMyNoteId(id)
+        setMyNoteIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+        setNotes((prev) => prev.filter((n) => n.id !== id))
+      }
     } finally {
       setDeletingId(null)
     }
@@ -150,7 +196,7 @@ export function SessionNotesSection({ artifactId }: Props) {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className="rounded-lg border border-gray-100 dark:border-night-801 bg-gray-50 dark:bg-night-803 p-4 space-y-2"
+                  className="group rounded-lg border border-gray-100 dark:border-night-801 bg-gray-50 dark:bg-night-803 p-4 space-y-2"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -165,18 +211,20 @@ export function SessionNotesSection({ artifactId }: Props) {
                         })}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleDelete(note.id)}
-                      disabled={deletingId === note.id}
-                      className="shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                      aria-label="Eliminar nota"
-                    >
-                      {deletingId === note.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    {myNoteIds.has(note.id) && (
+                      <button
+                        onClick={() => handleDelete(note.id)}
+                        disabled={deletingId === note.id}
+                        className="shrink-0 p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                        aria-label="Eliminar nota"
+                      >
+                        {deletingId === note.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">
                     {note.notes}

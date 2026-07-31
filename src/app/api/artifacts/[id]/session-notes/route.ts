@@ -10,12 +10,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body = await req.json()
-  const { sessionName, sessionDate, notes } = body
+  const { sessionName, sessionDate, notes, browserToken } = body
 
   if (!sessionName?.trim() || !sessionDate || !notes?.trim()) {
     return NextResponse.json({ error: 'sessionName, sessionDate y notes son requeridos' }, { status: 400 })
   }
 
-  const note = await createSessionNote(id, { sessionName: sessionName.trim(), sessionDate, notes: notes.trim() })
+  const note = await createSessionNote(
+    id,
+    { sessionName: sessionName.trim(), sessionDate, notes: notes.trim() },
+    browserToken ?? ''
+  )
   return NextResponse.json(note, { status: 201 })
 }

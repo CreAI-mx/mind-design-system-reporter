@@ -24,7 +24,8 @@ export async function getSessionNotes(artifactId: string): Promise<SessionNote[]
 
 export async function createSessionNote(
   artifactId: string,
-  note: Pick<SessionNote, 'sessionName' | 'sessionDate' | 'notes'>
+  note: Pick<SessionNote, 'sessionName' | 'sessionDate' | 'notes'>,
+  browserToken: string
 ): Promise<SessionNote> {
   const { data, error } = await supabase
     .from('session_notes')
@@ -33,6 +34,7 @@ export async function createSessionNote(
       session_name: note.sessionName,
       session_date: note.sessionDate,
       notes: note.notes,
+      browser_token: browserToken,
     })
     .select()
     .single()
@@ -40,7 +42,16 @@ export async function createSessionNote(
   return toSessionNote(data)
 }
 
-export async function deleteSessionNote(id: string): Promise<void> {
+export async function deleteSessionNote(id: string, browserToken: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('session_notes')
+    .select('browser_token')
+    .eq('id', id)
+    .single()
+
+  if (!data || data.browser_token !== browserToken) return false
+
   const { error } = await supabase.from('session_notes').delete().eq('id', id)
   if (error) throw error
+  return true
 }

@@ -3,15 +3,14 @@ import Link from 'next/link'
 import { getArtifact, getArtifactsByParentId } from '@/lib/artifacts'
 import { getModule, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from '@/components/artifacts/status-badge'
-import { ArtifactDeleteButton } from '@/components/artifacts/artifact-delete-button'
-import { ArtifactDuplicateButton } from '@/components/artifacts/artifact-duplicate-button'
 import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
+import { ArtifactActionsMenu } from '@/components/artifacts/artifact-actions-menu'
 import { CommentsSection } from '@/components/artifacts/comments-section'
 import { SessionNotesSection } from '@/components/artifacts/session-notes-section'
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
-import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight, GitCompare } from 'lucide-react'
+import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,18 +47,8 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
             )}
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{artifact.name || 'Sin nombre'}</h1>
           </div>
-          <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
-            {parent && (
-              <Link
-                href={`/artifacts/${artifact.id}/compare`}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
-              >
-                <GitCompare className="w-3.5 h-3.5" />
-                Comparar
-              </Link>
-            )}
-            <ArtifactDuplicateButton artifact={artifact} />
             <Link
               href={`/artifacts/${artifact.id}/edit`}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
@@ -67,7 +56,11 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
               <Pencil className="w-3.5 h-3.5" />
               Editar
             </Link>
-            <ArtifactDeleteButton id={artifact.id} />
+            <ArtifactActionsMenu
+              artifact={artifact}
+              hasParent={!!parent}
+              hasSlack={!!process.env.SLACK_WEBHOOK_URL}
+            />
           </div>
         </div>
 

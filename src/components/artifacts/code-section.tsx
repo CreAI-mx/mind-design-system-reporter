@@ -65,6 +65,26 @@ function buildPreviewHtml(raw: string): string {
 
   document.addEventListener('DOMContentLoaded', function () {
     try {
+      /* Detect pure JSON — render it as formatted text instead of JSX */
+      var _trimmed = raw.replace(/^\\s+|\\s+$/g, '');
+      if (_trimmed.charAt(0) === '{' || _trimmed.charAt(0) === '[') {
+        try {
+          var _json = JSON.parse(_trimmed);
+          var _pretty = JSON.stringify(_json, null, 2);
+          ReactDOM.createRoot(document.getElementById('root')).render(
+            React.createElement('pre', {
+              style: {
+                margin: 16, fontFamily: 'monospace', fontSize: 12,
+                lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                overflow: 'auto', color: '#1e293b'
+              }
+            }, _pretty)
+          );
+          try { window.parent.postMessage({ type: 'preview-ready' }, '*'); } catch (_) {}
+          return;
+        } catch (_) { /* not valid JSON, fall through to React render */ }
+      }
+
       var prepared = prepare(raw);
 
       /* Use Babel programmatically — NOT type="text/babel".
@@ -133,7 +153,7 @@ type Tab = 'code' | 'preview'
 type PreviewHeight = 400 | 600 | 800
 
 export function CodeSection({ code, filename = 'component.jsx' }: { code: string; filename?: string }) {
-  const [tab, setTab] = useState<Tab>('code')
+  const [tab, setTab] = useState<Tab>('preview')
   const [copied, setCopied] = useState(false)
   const [previewKey, setPreviewKey] = useState(0)
   const [previewState, setPreviewState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -187,13 +207,13 @@ export function CodeSection({ code, filename = 'component.jsx' }: { code: string
       <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-200 dark:border-night-801">
         {/* Tabs */}
         <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 shrink-0">
-          <TabBtn active={tab === 'code'} onClick={() => setTab('code')}>
-            <Code2 className="w-3 h-3" />
-            Código
-          </TabBtn>
           <TabBtn active={tab === 'preview'} onClick={() => setTab('preview')}>
             <Monitor className="w-3 h-3" />
             Vista previa
+          </TabBtn>
+          <TabBtn active={tab === 'code'} onClick={() => setTab('code')}>
+            <Code2 className="w-3 h-3" />
+            Código
           </TabBtn>
         </div>
 

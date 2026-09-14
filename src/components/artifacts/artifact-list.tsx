@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import Fuse from 'fuse.js'
-import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2, LayoutList, Columns3 } from 'lucide-react'
+import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2, LayoutList, Columns3, Table2, ChevronUp, ChevronDown } from 'lucide-react'
 import type { Artifact, ArtifactStatus, ModuleGroup } from '@/lib/types'
 import { MODULES, MODULE_GROUPS } from '@/lib/modules'
 import { StatusBadge } from './status-badge'
@@ -12,7 +12,8 @@ import { formatDate, cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
 
-type SortKey = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'status'
+type SortKey = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'status' | 'version-asc' | 'version-desc'
+type View = 'list' | 'kanban' | 'table'
 
 const STATUS_ORDER: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
 
@@ -84,7 +85,7 @@ export function ArtifactList() {
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState(false)
-  const [view, setView] = useState<'list' | 'kanban'>('list')
+  const [view, setView] = useState<View>('list')
 
   useEffect(() => {
     fetch('/api/artifacts')
@@ -129,7 +130,9 @@ export function ArtifactList() {
       case 'date-asc':  return arr.sort((a, b) => a.date.localeCompare(b.date))
       case 'name-asc':  return arr.sort((a, b) => a.name.localeCompare(b.name, 'es'))
       case 'name-desc': return arr.sort((a, b) => b.name.localeCompare(a.name, 'es'))
-      case 'status':    return arr.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))
+      case 'status':       return arr.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))
+      case 'version-asc':  return arr.sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }))
+      case 'version-desc': return arr.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }))
     }
   }, [filtered, sort])
 
@@ -299,6 +302,18 @@ export function ArtifactList() {
               <LayoutList className="w-3.5 h-3.5" />
             </button>
             <button
+              onClick={() => setView('table')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-2 text-sm border-l border-gray-200 dark:border-gray-600 transition-colors',
+                view === 'table'
+                  ? 'bg-lipu-500 text-lipu-text'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-night-801'
+              )}
+              title="Vista tabla"
+            >
+              <Table2 className="w-3.5 h-3.5" />
+            </button>
+            <button
               onClick={() => setView('kanban')}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-2 text-sm border-l border-gray-200 dark:border-gray-600 transition-colors',
@@ -401,10 +416,22 @@ export function ArtifactList() {
             {hasFilters && <span className="text-xs text-gray-400">· filtrado de {artifacts.length}</span>}
           </div>
 
-          {/* List */}
+          {/* List / Table */}
           <div className="flex-1 overflow-y-auto overflow-x-auto px-6 pb-4">
             {paginated.length === 0 ? (
               <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} />
+            ) : view === 'table' ? (
+              <ArtifactTable
+                artifacts={paginated}
+                sort={sort}
+                onSort={setSort}
+                selected={selectedIds}
+                onToggleSelect={toggleSelect}
+                onTagClick={setTagFilter}
+                allSelected={allPageSelected}
+                someSelected={somePageSelected}
+                onToggleAll={toggleSelectPage}
+              />
             ) : (
               <div className="space-y-2">
                 {paginated.map((artifact) => (
@@ -554,6 +581,191 @@ function ArtifactRow({
       </div>
     </Link>
     </div>
+  )
+}
+
+function ArtifactTable({
+  artifacts,
+  sort,
+  onSort,
+  selected,
+  onToggleSelect,
+  onTagClick,
+  allSelected,
+  someSelected,
+  onToggleAll,
+}: {
+  artifacts: Artifact[]
+  sort: SortKey
+  onSort: (key: SortKey) => void
+  selected: Set<string>
+  onToggleSelect: (id: string) => void
+  onTagClick: (tag: string) => void
+  allSelected: boolean
+  someSelected: boolean
+  onToggleAll: () => void
+}) {
+  function toggle(asc: SortKey, desc: SortKey): SortKey {
+    return sort === asc ? desc : asc
+  }
+  function active(...keys: SortKey[]) {
+    return keys.includes(sort)
+  }
+
+  return (
+    <table className="w-full text-sm border-separate border-spacing-0">
+      <thead>
+        <tr>
+          <th className="w-8 px-3 py-2.5 bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+              onChange={onToggleAll}
+              className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
+            />
+          </th>
+          <ColHeader label="Nombre" isActive={active('name-asc', 'name-desc')} direction={sort === 'name-asc' ? 'asc' : 'desc'} onClick={() => onSort(toggle('name-asc', 'name-desc'))} />
+          <ColHeader label="Módulo" isActive={false} direction="asc" onClick={() => {}} sortable={false} />
+          <ColHeader label="Versión" isActive={active('version-asc', 'version-desc')} direction={sort === 'version-asc' ? 'asc' : 'desc'} onClick={() => onSort(toggle('version-asc', 'version-desc'))} />
+          <ColHeader label="Status" isActive={active('status')} direction="asc" onClick={() => onSort('status')} />
+          <ColHeader label="Fecha" isActive={active('date-asc', 'date-desc')} direction={sort === 'date-asc' ? 'asc' : 'desc'} onClick={() => onSort(toggle('date-desc', 'date-asc'))} />
+          <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10">
+            Etiquetas
+          </th>
+          <th className="w-16 bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10" />
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100 dark:divide-night-801">
+        {artifacts.map((artifact) => (
+          <TableRow
+            key={artifact.id}
+            artifact={artifact}
+            selected={selected.has(artifact.id)}
+            onToggleSelect={onToggleSelect}
+            onTagClick={onTagClick}
+          />
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function ColHeader({
+  label,
+  isActive,
+  direction,
+  onClick,
+  sortable = true,
+}: {
+  label: string
+  isActive: boolean
+  direction: 'asc' | 'desc'
+  onClick: () => void
+  sortable?: boolean
+}) {
+  return (
+    <th className="px-4 py-2.5 text-left bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10 whitespace-nowrap">
+      {sortable ? (
+        <button
+          onClick={onClick}
+          className={cn(
+            'flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider transition-colors',
+            isActive ? 'text-lipu-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+          )}
+        >
+          {label}
+          {isActive
+            ? direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+            : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+        </button>
+      ) : (
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</span>
+      )}
+    </th>
+  )
+}
+
+function TableRow({
+  artifact,
+  selected,
+  onToggleSelect,
+  onTagClick,
+}: {
+  artifact: Artifact
+  selected: boolean
+  onToggleSelect: (id: string) => void
+  onTagClick: (tag: string) => void
+}) {
+  const mod = MODULES.find((m) => m.key === artifact.module)
+  const group = mod?.group
+  const groupConfig = group ? MODULE_GROUPS[group] : null
+
+  return (
+    <tr className={cn('group transition-colors', selected ? 'bg-lipu-500/5' : 'hover:bg-gray-50 dark:hover:bg-night-801/40')}>
+      <td className="w-8 px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(artifact.id)}
+          className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
+        />
+      </td>
+      <td className="px-4 py-2.5 max-w-xs">
+        <Link
+          href={`/artifacts/${artifact.id}`}
+          className="font-medium text-gray-900 dark:text-white hover:text-lipu-600 dark:hover:text-lipu-400 transition-colors truncate block"
+        >
+          {artifact.name || 'Sin nombre'}
+        </Link>
+      </td>
+      <td className="px-4 py-2.5 w-36">
+        {mod ? (
+          <div>
+            <p className={cn('text-[10px] font-semibold uppercase tracking-wider', groupConfig?.color)}>
+              {groupConfig?.label}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{mod.label}</p>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">{artifact.module}</span>
+        )}
+      </td>
+      <td className="px-4 py-2.5 w-20 text-center">
+        <span className="text-xs text-gray-400 tabular-nums">v{artifact.version}</span>
+      </td>
+      <td className="px-4 py-2.5 w-32">
+        <StatusBadge status={artifact.status} />
+      </td>
+      <td className="px-4 py-2.5 w-28 text-xs text-gray-400 tabular-nums whitespace-nowrap">
+        {formatDate(artifact.date)}
+      </td>
+      <td className="px-4 py-2.5">
+        <div className="flex gap-1 flex-wrap">
+          {artifact.tags.slice(0, 2).map((tag) => (
+            <button
+              key={tag}
+              onClick={() => onTagClick(tag)}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-night-801 text-gray-500 dark:text-gray-400 hover:bg-lipu-600/10 hover:text-lipu-500 transition-colors"
+            >
+              {tag}
+            </button>
+          ))}
+          {artifact.tags.length > 2 && (
+            <span className="text-[10px] text-gray-400 self-center">+{artifact.tags.length - 2}</span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-2.5 w-16">
+        <div className="flex items-center gap-1.5 justify-end">
+          {artifact.links.length > 0 && <ExternalLink className="w-3 h-3 text-gray-300 dark:text-gray-600" />}
+          {artifact.code && <Code2 className="w-3 h-3 text-gray-300 dark:text-gray-600" />}
+          <Link href={`/artifacts/${artifact.id}`}>
+            <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-lipu-500 transition-colors" />
+          </Link>
+        </div>
+      </td>
+    </tr>
   )
 }
 

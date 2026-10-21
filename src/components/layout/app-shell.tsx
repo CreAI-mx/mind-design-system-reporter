@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { GlobalSearch } from './global-search'
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, userEmail }: { children: React.ReactNode; userEmail: string | null }) {
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -19,6 +21,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [])
+
+  // El login se renderiza sin shell (sidebar/header).
+  if (pathname === '/login') return <>{children}</>
 
   return (
     <div className="flex h-screen bg-white dark:bg-night-803 overflow-hidden">
@@ -35,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Header
           onMenuClick={() => setSidebarOpen(v => !v)}
           onSearchClick={() => setSearchOpen(true)}
+          userEmail={userEmail}
         />
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-night-804">
           {children}

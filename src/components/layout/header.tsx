@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Menu, Search } from 'lucide-react'
+import { Menu, Search, LogOut } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 
 const TITLES: Record<string, string> = {
@@ -9,14 +9,16 @@ const TITLES: Record<string, string> = {
   '/design-system': 'Design System',
   '/artifacts': 'Artifacts',
   '/artifacts/new': 'Nuevo Artifact',
+  '/settings': 'Configuración',
 }
 
 interface HeaderProps {
   onMenuClick: () => void
   onSearchClick: () => void
+  userEmail: string | null
 }
 
-export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
+export function Header({ onMenuClick, onSearchClick, userEmail }: HeaderProps) {
   const pathname = usePathname()
 
   const title =
@@ -48,6 +50,22 @@ export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
       </button>
 
       <ThemeToggle />
+
+      {userEmail && (
+        <form action="/auth/signout" method="post" className="flex items-center gap-2">
+          <span className="hidden md:inline text-xs text-gray-400 max-w-44 truncate" title={userEmail}>
+            {userEmail}
+          </span>
+          <button
+            type="submit"
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-night-801 transition-colors"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </form>
+      )}
     </header>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Menu, Search, LogOut } from 'lucide-react'
+import { Menu, Search, LogIn, LogOut } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 
 const TITLES: Record<string, string> = {
@@ -50,6 +50,16 @@ export function Header({ onMenuClick, onSearchClick, userEmail }: HeaderProps) {
       </button>
 
       <ThemeToggle />
+
+      {!userEmail && (
+        <a
+          href="/login"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-night-801 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
+        >
+          <LogIn className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Iniciar sesión</span>
+        </a>
+      )}
 
       {userEmail && (
         <form action="/auth/signout" method="post" className="flex items-center gap-2">

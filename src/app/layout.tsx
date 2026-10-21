@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={`${roboto.variable} font-sans`}>
-        <Providers taxonomy={taxonomy}>
+        <Providers taxonomy={taxonomy} userEmail={user?.email ?? null}>
           <AppShell userEmail={user?.email ?? null}>{children}</AppShell>
         </Providers>
       </body>

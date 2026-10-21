@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Layers, ArrowRight, Clock, BookOpen } from 'lucide-react'
 import { readArtifacts } from '@/lib/artifacts'
+import { getSessionUser } from '@/lib/supabase-server'
 import { getTaxonomy } from '@/lib/taxonomy'
 import { findGroup, findModule } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
@@ -23,7 +24,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default async function HomePage() {
-  const [artifacts, taxonomy] = await Promise.all([readArtifacts(), getTaxonomy()])
+  const [artifacts, taxonomy, user] = await Promise.all([readArtifacts(), getTaxonomy(), getSessionUser()])
   const total = artifacts.length
   const enRevision = artifacts.filter(a => a.status === 'en-revision').length
   const aprobados = artifacts.filter(a => a.status === 'aprobado').length
@@ -139,12 +140,14 @@ export default async function HomePage() {
       {total === 0 && (
         <div className="py-20 text-center space-y-4">
           <p className="text-sm text-gray-400">No hay artifacts todavía.</p>
-          <Link
-            href="/artifacts/new"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium transition-colors"
-          >
-            Crear primer artifact
-          </Link>
+          {user && (
+            <Link
+              href="/artifacts/new"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium transition-colors"
+            >
+              Crear primer artifact
+            </Link>
+          )}
         </div>
       )}
     </div>

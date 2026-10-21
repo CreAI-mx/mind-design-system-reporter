@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getArtifact, createArtifact } from '@/lib/artifacts'
 import { readArchive } from '@/lib/archive'
+import { requireSession } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { id } = await params
 
   const entries = await readArchive()

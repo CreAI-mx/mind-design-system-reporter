@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { requireSession } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 const ALLOWED = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif']
 
 export async function POST(request: Request) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const formData = await request.formData()
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })

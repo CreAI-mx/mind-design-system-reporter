@@ -35,6 +35,12 @@ export function isAdmin(user: User | null): boolean {
   return (user?.app_metadata as Record<string, unknown> | undefined)?.role === 'admin'
 }
 
+// Guard para rutas API de escritura de artifacts: exige cualquier sesión.
+// Devuelve el usuario o null.
+export async function requireSession(): Promise<User | null> {
+  return getSessionUser()
+}
+
 // Guard para rutas API de escritura: exige sesión con rol admin.
 // Devuelve el cliente con sesión (RLS respalda la verificación) o null.
 export async function requireAdmin() {

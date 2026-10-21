@@ -6,6 +6,7 @@ import { ExternalLink, Code2, GitBranch } from 'lucide-react'
 import { findGroup, findModule, type Artifact, type ArtifactStatus } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
 import { useTaxonomy } from '@/components/taxonomy-provider'
+import { useSessionEmail } from '@/components/session-provider'
 import { StatusBadge } from './status-badge'
 import { formatDate, cn } from '@/lib/utils'
 
@@ -15,6 +16,7 @@ interface ArtifactKanbanProps {
 }
 
 export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProps) {
+  const canEdit = !!useSessionEmail()
   const { statuses } = useTaxonomy()
   const columns = statuses.map((s) => ({
     status: s.key,
@@ -76,9 +78,9 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
             <div
               key={col.status}
               className="flex flex-col w-64 shrink-0"
-              onDragOver={(e) => handleDragOver(e, col.status)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, col.status)}
+              onDragOver={canEdit ? (e) => handleDragOver(e, col.status) : undefined}
+              onDragLeave={canEdit ? handleDragLeave : undefined}
+              onDrop={canEdit ? (e) => handleDrop(e, col.status) : undefined}
             >
               {/* Column header */}
               <div className={cn(
@@ -102,6 +104,7 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
                   <KanbanCard
                     key={artifact.id}
                     artifact={artifact}
+                    draggable={canEdit}
                     dragging={draggingId === artifact.id}
                     updating={updating === artifact.id}
                     onDragStart={(e) => handleDragStart(e, artifact.id)}
@@ -124,12 +127,14 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
 
 function KanbanCard({
   artifact,
+  draggable,
   dragging,
   updating,
   onDragStart,
   onDragEnd,
 }: {
   artifact: Artifact
+  draggable: boolean
   dragging: boolean
   updating: boolean
   onDragStart: (e: React.DragEvent) => void
@@ -141,11 +146,12 @@ function KanbanCard({
 
   return (
     <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      draggable={draggable}
+      onDragStart={draggable ? onDragStart : undefined}
+      onDragEnd={draggable ? onDragEnd : undefined}
       className={cn(
-        'bg-white dark:bg-night-802 rounded-lg border border-gray-200 dark:border-night-801 p-3 cursor-grab active:cursor-grabbing transition-all select-none',
+        'bg-white dark:bg-night-802 rounded-lg border border-gray-200 dark:border-night-801 p-3 transition-all select-none',
+        draggable && 'cursor-grab active:cursor-grabbing',
         dragging && 'opacity-40 scale-95',
         updating && 'opacity-60 pointer-events-none',
         !dragging && !updating && 'hover:border-lipu-500/40 hover:shadow-sm',

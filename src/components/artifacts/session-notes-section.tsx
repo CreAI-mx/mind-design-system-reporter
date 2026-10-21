@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { FileText, Plus, Trash2, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { SessionNote } from '@/lib/types'
+import { useSessionEmail } from '@/components/session-provider'
 
 const TOKEN_KEY = 'mind_session_token'
 const MY_NOTES_KEY = 'mind_my_session_notes'
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export function SessionNotesSection({ artifactId }: Props) {
+  const canEdit = !!useSessionEmail()
   const [notes, setNotes] = useState<SessionNote[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
@@ -132,7 +134,8 @@ export function SessionNotesSection({ artifactId }: Props) {
 
       {open && (
         <div className="px-5 pb-5 space-y-5 border-t border-gray-100 dark:border-night-801 pt-4">
-          {/* Add form */}
+          {/* Add form (solo con sesión) */}
+          {canEdit && (
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -181,6 +184,7 @@ export function SessionNotesSection({ artifactId }: Props) {
               </button>
             </div>
           </form>
+          )}
 
           {/* Notes list */}
           {loading ? (
@@ -189,7 +193,7 @@ export function SessionNotesSection({ artifactId }: Props) {
             </div>
           ) : notes.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-4">
-              Sin notas de sesión aún. Agrega la primera arriba.
+              {canEdit ? 'Sin notas de sesión aún. Agrega la primera arriba.' : 'Sin notas de sesión.'}
             </p>
           ) : (
             <div className="space-y-3">

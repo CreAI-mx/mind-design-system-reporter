@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSessionNotes, createSessionNote } from '@/lib/session-notes'
+import { requireSession } from '@/lib/supabase-server'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -8,6 +9,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { id } = await params
   const body = await req.json()
   const { sessionName, sessionDate, notes, browserToken } = body

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getArtifact, updateArtifact, deleteArtifact } from '@/lib/artifacts'
 import { addArchiveEntry } from '@/lib/archive'
 import { ensureTags } from '@/lib/tags'
+import { requireSession } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { id } = await params
   const body = await request.json()
 
@@ -26,6 +30,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { id } = await params
   const artifact = await getArtifact(id)
   if (!artifact) return NextResponse.json({ error: 'Not found' }, { status: 404 })

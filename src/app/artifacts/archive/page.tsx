@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { readArtifacts } from '@/lib/artifacts'
 import { readArchive } from '@/lib/archive'
 import type { ArchiveEntry } from '@/lib/archive'
+import { getSessionUser } from '@/lib/supabase-server'
 import { getTaxonomy } from '@/lib/taxonomy'
 import { findGroup, findModule, findStatus } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
@@ -18,7 +19,10 @@ const ACTION_CONFIG = {
 }
 
 export default async function ArchivePage() {
-  const [currentArtifacts, entries, taxonomy] = await Promise.all([readArtifacts(), readArchive(), getTaxonomy()])
+  const [currentArtifacts, entries, taxonomy, user] = await Promise.all([
+    readArtifacts(), readArchive(), getTaxonomy(), getSessionUser(),
+  ])
+  const canEdit = !!user
   const currentIds = new Set(currentArtifacts.map((a) => a.id))
 
   /* ── Deleted & recoverable: latest deletion per ID not in current ── */
@@ -111,7 +115,7 @@ export default async function ArchivePage() {
                   </span>
 
                   {/* Restore */}
-                  <ArtifactRestoreButton id={artifact.id} name={artifact.name} />
+                  {canEdit && <ArtifactRestoreButton id={artifact.id} name={artifact.name} />}
                 </div>
               )
             })}

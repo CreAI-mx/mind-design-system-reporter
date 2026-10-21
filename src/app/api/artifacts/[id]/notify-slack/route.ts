@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getArtifact } from '@/lib/artifacts'
 import { sendSlackNotification } from '@/lib/slack'
+import { requireSession } from '@/lib/supabase-server'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { id } = await params
   const artifact = await getArtifact(id)
   if (!artifact) return NextResponse.json({ error: 'Not found' }, { status: 404 })

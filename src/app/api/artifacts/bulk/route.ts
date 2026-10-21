@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { ensureTags } from '@/lib/tags'
+import { requireSession } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const { ids, operation, value } = await request.json() as {
     ids: string[]
     operation: 'status' | 'addTag'

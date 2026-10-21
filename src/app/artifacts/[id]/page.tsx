@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getArtifact, getArtifactsByParentId } from '@/lib/artifacts'
+import { getSessionUser } from '@/lib/supabase-server'
 import { getTaxonomy } from '@/lib/taxonomy'
 import { findGroup, findModule, type Taxonomy } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
@@ -21,11 +22,13 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
   const artifact = await getArtifact(id)
   if (!artifact) notFound()
 
-  const [parent, children, taxonomy] = await Promise.all([
+  const [parent, children, taxonomy, user] = await Promise.all([
     artifact.parentId ? getArtifact(artifact.parentId) : Promise.resolve(null),
     getArtifactsByParentId(id),
     getTaxonomy(),
+    getSessionUser(),
   ])
+  const canEdit = !!user
 
   const mod = findModule(taxonomy, artifact.module)
   const group = findGroup(taxonomy, mod?.groupKey)
@@ -51,18 +54,22 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
-            <Link
-              href={`/artifacts/${artifact.id}/edit`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Editar
-            </Link>
-            <ArtifactActionsMenu
-              artifact={artifact}
-              hasParent={!!parent}
-              hasSlack={!!process.env.SLACK_WEBHOOK_URL}
-            />
+            {canEdit && (
+              <>
+                <Link
+                  href={`/artifacts/${artifact.id}/edit`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
+                </Link>
+                <ArtifactActionsMenu
+                  artifact={artifact}
+                  hasParent={!!parent}
+                  hasSlack={!!process.env.SLACK_WEBHOOK_URL}
+                />
+              </>
+            )}
           </div>
         </div>
 

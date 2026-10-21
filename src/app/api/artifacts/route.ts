@@ -4,6 +4,7 @@ import { readArtifacts, createArtifact } from '@/lib/artifacts'
 import { addArchiveEntry } from '@/lib/archive'
 import { ensureTags } from '@/lib/tags'
 import type { Artifact } from '@/lib/types'
+import { requireSession } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await requireSession())) {
+    return NextResponse.json({ error: 'Se requiere sesión' }, { status: 401 })
+  }
   const body = await request.json()
   const now = new Date().toISOString()
 

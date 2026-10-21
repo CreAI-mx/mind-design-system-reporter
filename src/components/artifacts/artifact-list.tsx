@@ -7,6 +7,7 @@ import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowU
 import { findGroup, findModule, type Artifact, type ArtifactStatus, type Taxonomy } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
 import { useTaxonomy } from '@/components/taxonomy-provider'
+import { useSessionEmail } from '@/components/session-provider'
 import { StatusBadge } from './status-badge'
 import { ArtifactKanban } from './artifact-kanban'
 import { formatDate, cn } from '@/lib/utils'
@@ -57,6 +58,7 @@ function exportCsv(artifacts: Artifact[], taxonomy: Taxonomy) {
 
 export function ArtifactList() {
   const taxonomy = useTaxonomy()
+  const canEdit = !!useSessionEmail()
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -330,18 +332,20 @@ export function ArtifactList() {
             <Download className="w-3.5 h-3.5" />
             CSV
           </button>
-          <Link
-            href="/artifacts/new"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Nuevo
-          </Link>
+          {canEdit && (
+            <Link
+              href="/artifacts/new"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lipu-500 text-lipu-text hover:bg-lipu-600 text-sm font-medium transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nuevo
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Bulk action bar */}
-      {selectedIds.size > 0 && (
+      {canEdit && selectedIds.size > 0 && (
         <div className="px-6 py-2.5 bg-lipu-600/5 dark:bg-lipu-600/10 border-b border-lipu-500/20 flex items-center gap-3 flex-wrap">
           {applying && <Loader2 className="w-3.5 h-3.5 animate-spin text-lipu-500 shrink-0" />}
           <span className="text-xs font-semibold text-lipu-500 shrink-0">
@@ -385,7 +389,7 @@ export function ArtifactList() {
         <>
           {/* Results count + select all */}
           <div className="px-6 py-2 flex items-center gap-3">
-            {paginated.length > 0 && (
+            {canEdit && paginated.length > 0 && (
               <input
                 type="checkbox"
                 checked={allPageSelected}
@@ -408,7 +412,7 @@ export function ArtifactList() {
           {/* List / Table */}
           <div className="flex-1 overflow-y-auto overflow-x-auto px-6 pb-4">
             {paginated.length === 0 ? (
-              <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} />
+              <EmptyState hasFilters={!!hasFilters} onClear={clearFilters} canCreate={canEdit} />
             ) : view === 'table' ? (
               <ArtifactTable
                 artifacts={paginated}
@@ -420,6 +424,7 @@ export function ArtifactList() {
                 allSelected={allPageSelected}
                 someSelected={somePageSelected}
                 onToggleAll={toggleSelectPage}
+                selectable={canEdit}
               />
             ) : (
               <div className="space-y-2">
@@ -430,6 +435,7 @@ export function ArtifactList() {
                     onTagClick={setTagFilter}
                     selected={selectedIds.has(artifact.id)}
                     onToggleSelect={toggleSelect}
+                    selectable={canEdit}
                   />
                 ))}
               </div>
@@ -497,11 +503,13 @@ function ArtifactRow({
   onTagClick,
   selected,
   onToggleSelect,
+  selectable,
 }: {
   artifact: Artifact
   onTagClick?: (tag: string) => void
   selected?: boolean
   onToggleSelect?: (id: string) => void
+  selectable?: boolean
 }) {
   const taxonomy = useTaxonomy()
   const mod = findModule(taxonomy, artifact.module)
@@ -509,12 +517,14 @@ function ArtifactRow({
 
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        checked={selected ?? false}
-        onChange={() => onToggleSelect?.(artifact.id)}
-        className="w-3.5 h-3.5 accent-lipu-500 shrink-0 cursor-pointer"
-      />
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={selected ?? false}
+          onChange={() => onToggleSelect?.(artifact.id)}
+          className="w-3.5 h-3.5 accent-lipu-500 shrink-0 cursor-pointer"
+        />
+      )}
     <Link
       href={`/artifacts/${artifact.id}`}
       className="flex-1 flex items-center gap-4 px-4 py-3 bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 hover:border-lipu-500/40 hover:shadow-light-sm transition-all group"
@@ -583,6 +593,7 @@ function ArtifactTable({
   allSelected,
   someSelected,
   onToggleAll,
+  selectable,
 }: {
   artifacts: Artifact[]
   sort: SortKey
@@ -593,6 +604,7 @@ function ArtifactTable({
   allSelected: boolean
   someSelected: boolean
   onToggleAll: () => void
+  selectable: boolean
 }) {
   function toggle(asc: SortKey, desc: SortKey): SortKey {
     return sort === asc ? desc : asc
@@ -605,15 +617,17 @@ function ArtifactTable({
     <table className="w-full text-sm border-separate border-spacing-0">
       <thead>
         <tr>
-          <th className="w-8 px-3 py-2.5 bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
-              onChange={onToggleAll}
-              className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
-            />
-          </th>
+          {selectable && (
+            <th className="w-8 px-3 py-2.5 bg-gray-50 dark:bg-night-803 border-b border-gray-200 dark:border-night-801 sticky top-0 z-10">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
+                onChange={onToggleAll}
+                className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
+              />
+            </th>
+          )}
           <ColHeader label="Nombre" isActive={active('name-asc', 'name-desc')} direction={sort === 'name-asc' ? 'asc' : 'desc'} onClick={() => onSort(toggle('name-asc', 'name-desc'))} />
           <ColHeader label="Módulo" isActive={false} direction="asc" onClick={() => {}} sortable={false} />
           <ColHeader label="Versión" isActive={active('version-asc', 'version-desc')} direction={sort === 'version-asc' ? 'asc' : 'desc'} onClick={() => onSort(toggle('version-asc', 'version-desc'))} />
@@ -633,6 +647,7 @@ function ArtifactTable({
             selected={selected.has(artifact.id)}
             onToggleSelect={onToggleSelect}
             onTagClick={onTagClick}
+            selectable={selectable}
           />
         ))}
       </tbody>
@@ -680,11 +695,13 @@ function TableRow({
   selected,
   onToggleSelect,
   onTagClick,
+  selectable,
 }: {
   artifact: Artifact
   selected: boolean
   onToggleSelect: (id: string) => void
   onTagClick: (tag: string) => void
+  selectable: boolean
 }) {
   const taxonomy = useTaxonomy()
   const mod = findModule(taxonomy, artifact.module)
@@ -692,14 +709,16 @@ function TableRow({
 
   return (
     <tr className={cn('group transition-colors', selected ? 'bg-lipu-500/5' : 'hover:bg-gray-50 dark:hover:bg-night-801/40')}>
-      <td className="w-8 px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => onToggleSelect(artifact.id)}
-          className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
-        />
-      </td>
+      {selectable && (
+        <td className="w-8 px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(artifact.id)}
+            className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
+          />
+        </td>
+      )}
       <td className="px-4 py-2.5 max-w-xs">
         <Link
           href={`/artifacts/${artifact.id}`}
@@ -758,7 +777,7 @@ function TableRow({
   )
 }
 
-function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
+function EmptyState({ hasFilters, onClear, canCreate }: { hasFilters: boolean; onClear: () => void; canCreate?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-20">
       <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-night-801 flex items-center justify-center mb-3">
@@ -774,12 +793,12 @@ function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () 
         <button onClick={onClear} className="text-xs text-lipu-500 hover:text-lipu-600 font-medium">
           Limpiar filtros
         </button>
-      ) : (
+      ) : canCreate ? (
         <Link href="/artifacts/new" className="flex items-center gap-1 text-xs text-lipu-500 hover:text-lipu-600 font-medium">
           <Plus className="w-3 h-3" />
           Crear artifact
         </Link>
-      )}
+      ) : null}
     </div>
   )
 }

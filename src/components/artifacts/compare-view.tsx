@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, GitBranch } from 'lucide-react'
-import type { Artifact } from '@/lib/types'
-import { MODULES } from '@/lib/modules'
+import { findModule, type Artifact } from '@/lib/types'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { StatusBadge } from './status-badge'
 import { formatDate, cn } from '@/lib/utils'
 
@@ -108,7 +108,8 @@ interface CompareViewProps {
 }
 
 export function CompareView({ artifact, parent }: CompareViewProps) {
-  const mod = MODULES.find((m) => m.key === artifact.module)
+  const taxonomy = useTaxonomy()
+  const mod = findModule(taxonomy, artifact.module)
   const codeDiff = diffLines(parent.code ?? '', artifact.code ?? '')
   const descDiff = diffLines(parent.description ?? '', artifact.description ?? '')
   const { removed: tagsRemoved, added: tagsAdded, same: tagsSame } = tagDiff(parent.tags, artifact.tags)

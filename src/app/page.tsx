@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { Layers, ArrowRight, Clock, BookOpen } from 'lucide-react'
 import { readArtifacts } from '@/lib/artifacts'
-import { getModule, MODULE_GROUPS } from '@/lib/modules'
+import { getTaxonomy } from '@/lib/taxonomy'
+import { findGroup, findModule } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
 import { StatusBadge } from '@/components/artifacts/status-badge'
 import { BusAnimation } from '@/components/dashboard/bus-animation'
 import { cn } from '@/lib/utils'
@@ -21,7 +23,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default async function HomePage() {
-  const artifacts = await readArtifacts()
+  const [artifacts, taxonomy] = await Promise.all([readArtifacts(), getTaxonomy()])
   const total = artifacts.length
   const enRevision = artifacts.filter(a => a.status === 'en-revision').length
   const aprobados = artifacts.filter(a => a.status === 'aprobado').length
@@ -90,8 +92,8 @@ export default async function HomePage() {
 
           <div className="divide-y divide-gray-100 dark:divide-night-801">
             {recent.map(artifact => {
-              const mod = getModule(artifact.module)
-              const group = mod?.group ? MODULE_GROUPS[mod.group] : null
+              const mod = findModule(taxonomy, artifact.module)
+              const group = findGroup(taxonomy, mod?.groupKey)
               return (
                 <Link
                   key={artifact.id}
@@ -104,7 +106,7 @@ export default async function HomePage() {
                     </p>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
                       {group && (
-                        <span className={cn('font-medium', group.color)}>{group.label} · </span>
+                        <span className={cn('font-medium', colorClasses(group.color).text)}>{group.label} · </span>
                       )}
                       {mod?.label ?? artifact.module} · v{artifact.version}
                     </p>

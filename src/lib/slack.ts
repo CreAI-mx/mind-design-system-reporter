@@ -1,15 +1,14 @@
-import type { Artifact } from './types'
-import { getModule, MODULE_GROUPS } from './modules'
-import { STATUS_CONFIG } from './types'
+import { findGroup, findModule, findStatus, type Artifact } from './types'
+import { getTaxonomy } from './taxonomy'
 
 export async function sendSlackNotification(artifact: Artifact, baseUrl: string, message?: string) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL
   if (!webhookUrl) throw new Error('SLACK_WEBHOOK_URL no configurado')
 
-  const mod = getModule(artifact.module)
-  const group = mod?.group
-  const groupConfig = group ? MODULE_GROUPS[group] : null
-  const statusLabel = STATUS_CONFIG[artifact.status]?.label ?? artifact.status
+  const taxonomy = await getTaxonomy()
+  const mod = findModule(taxonomy, artifact.module)
+  const groupConfig = findGroup(taxonomy, mod?.groupKey)
+  const statusLabel = findStatus(taxonomy, artifact.status)?.label ?? artifact.status
   const artifactUrl = `${baseUrl}/artifacts/${artifact.id}`
 
   const body = {

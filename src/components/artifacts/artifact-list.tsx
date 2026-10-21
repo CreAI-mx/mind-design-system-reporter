@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import Fuse from 'fuse.js'
 import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2, LayoutList, Columns3, Table2, ChevronUp, ChevronDown } from 'lucide-react'
-import type { Artifact, ArtifactStatus, ModuleGroup } from '@/lib/types'
-import { MODULES, MODULE_GROUPS } from '@/lib/modules'
+import { findGroup, findModule, type Artifact, type ArtifactStatus, type Taxonomy } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { StatusBadge } from './status-badge'
 import { ArtifactKanban } from './artifact-kanban'
 import { formatDate, cn } from '@/lib/utils'
@@ -15,24 +16,6 @@ const PAGE_SIZE = 20
 type SortKey = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'status' | 'version-asc' | 'version-desc'
 type View = 'list' | 'kanban' | 'table'
 
-const STATUS_ORDER: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
-
-const STATUS_OPTIONS: { value: ArtifactStatus | ''; label: string }[] = [
-  { value: '', label: 'Todos los estados' },
-  { value: 'borrador', label: 'Borrador' },
-  { value: 'en-revision', label: 'En revisión' },
-  { value: 'aprobado', label: 'Aprobado' },
-  { value: 'entregado', label: 'Entregado' },
-  { value: 'deprecado', label: 'Deprecado' },
-]
-
-const GROUP_OPTIONS: { value: ModuleGroup | ''; label: string }[] = [
-  { value: '', label: 'Todos los grupos' },
-  { value: 'management', label: 'Management' },
-  { value: 'operations', label: 'Operations' },
-  { value: 'administration', label: 'Administration' },
-]
-
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'date-desc', label: 'Más reciente' },
   { value: 'date-asc', label: 'Más antiguo' },
@@ -41,16 +24,16 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'status', label: 'Por status' },
 ]
 
-function exportCsv(artifacts: Artifact[]) {
+function exportCsv(artifacts: Artifact[], taxonomy: Taxonomy) {
   const header = ['ID', 'Nombre', 'Módulo', 'Grupo', 'Status', 'Versión', 'Descripción', 'Etiquetas', 'Fecha', 'Links', 'Tiene código', 'Creado', 'Actualizado']
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
   const rows = artifacts.map((a) => {
-    const mod = MODULES.find((m) => m.key === a.module)
+    const mod = findModule(taxonomy, a.module)
     return [
       escape(a.id),
       escape(a.name),
       escape(mod?.label ?? a.module),
-      escape(mod?.group ?? ''),
+      escape(mod?.groupKey ?? ''),
       escape(a.status),
       escape(a.version),
       escape(a.description),
@@ -73,12 +56,13 @@ function exportCsv(artifacts: Artifact[]) {
 }
 
 export function ArtifactList() {
+  const taxonomy = useTaxonomy()
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ArtifactStatus | ''>('')
-  const [groupFilter, setGroupFilter] = useState<ModuleGroup | ''>('')
+  const [groupFilter, setGroupFilter] = useState('')
   const [moduleFilter, setModuleFilter] = useState('')
   const [tagFilter, setTagFilter] = useState('')
   const [sort, setSort] = useState<SortKey>('date-desc')
@@ -102,8 +86,8 @@ export function ArtifactList() {
   useEffect(() => { setPage(1) }, [query, statusFilter, groupFilter, moduleFilter, tagFilter, sort])
 
   const moduleOptions = useMemo(
-    () => (groupFilter ? MODULES.filter((m) => m.group === groupFilter) : MODULES),
-    [groupFilter]
+    () => (groupFilter ? taxonomy.modules.filter((m) => m.groupKey === groupFilter) : taxonomy.modules),
+    [groupFilter, taxonomy.modules]
   )
 
   const fuse = useMemo(
@@ -117,11 +101,11 @@ export function ArtifactList() {
     if (tagFilter) result = result.filter((a) => a.tags.includes(tagFilter))
     if (moduleFilter) result = result.filter((a) => a.module === moduleFilter)
     else if (groupFilter) {
-      const keys = MODULES.filter((m) => m.group === groupFilter).map((m) => m.key)
+      const keys = taxonomy.modules.filter((m) => m.groupKey === groupFilter).map((m) => m.key)
       result = result.filter((a) => keys.includes(a.module))
     }
     return result
-  }, [query, artifacts, fuse, statusFilter, tagFilter, groupFilter, moduleFilter])
+  }, [query, artifacts, fuse, statusFilter, tagFilter, groupFilter, moduleFilter, taxonomy.modules])
 
   const sorted = useMemo(() => {
     const arr = [...filtered]
@@ -130,11 +114,14 @@ export function ArtifactList() {
       case 'date-asc':  return arr.sort((a, b) => a.date.localeCompare(b.date))
       case 'name-asc':  return arr.sort((a, b) => a.name.localeCompare(b.name, 'es'))
       case 'name-desc': return arr.sort((a, b) => b.name.localeCompare(a.name, 'es'))
-      case 'status':       return arr.sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))
+      case 'status': {
+        const order = taxonomy.statuses.map((s) => s.key)
+        return arr.sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))
+      }
       case 'version-asc':  return arr.sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }))
       case 'version-desc': return arr.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }))
     }
-  }, [filtered, sort])
+  }, [filtered, sort, taxonomy.statuses])
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -232,18 +219,20 @@ export function ArtifactList() {
         {/* Filters */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ArtifactStatus | '')}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
         >
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <option value="">Todos los estados</option>
+          {taxonomy.statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
 
         <select
           value={groupFilter}
-          onChange={(e) => { setGroupFilter(e.target.value as ModuleGroup | ''); setModuleFilter('') }}
+          onChange={(e) => { setGroupFilter(e.target.value); setModuleFilter('') }}
           className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
         >
-          {GROUP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          <option value="">Todos los grupos</option>
+          {taxonomy.groups.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)}
         </select>
 
         <select
@@ -335,7 +324,7 @@ export function ArtifactList() {
             Progreso
           </Link>
           <button
-            onClick={() => exportCsv(sorted)}
+            onClick={() => exportCsv(sorted, taxonomy)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
@@ -365,8 +354,8 @@ export function ArtifactList() {
             className="px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 disabled:opacity-50 transition-colors"
           >
             <option value="">Cambiar status...</option>
-            {STATUS_OPTIONS.filter((o) => o.value).map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {taxonomy.statuses.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
             ))}
           </select>
           {allTags.length > 0 && (
@@ -514,9 +503,9 @@ function ArtifactRow({
   selected?: boolean
   onToggleSelect?: (id: string) => void
 }) {
-  const mod = MODULES.find((m) => m.key === artifact.module)
-  const group = mod?.group
-  const groupConfig = group ? MODULE_GROUPS[group] : null
+  const taxonomy = useTaxonomy()
+  const mod = findModule(taxonomy, artifact.module)
+  const group = findGroup(taxonomy, mod?.groupKey)
 
   return (
     <div className="flex items-center gap-2">
@@ -533,8 +522,8 @@ function ArtifactRow({
       <div className="w-36 shrink-0">
         {mod ? (
           <>
-            <p className={cn('text-[10px] font-semibold uppercase tracking-wider', groupConfig?.color)}>
-              {MODULE_GROUPS[group!]?.label}
+            <p className={cn('text-[10px] font-semibold uppercase tracking-wider', colorClasses(group?.color).text)}>
+              {group?.label}
             </p>
             <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{mod.label}</p>
           </>
@@ -697,9 +686,9 @@ function TableRow({
   onToggleSelect: (id: string) => void
   onTagClick: (tag: string) => void
 }) {
-  const mod = MODULES.find((m) => m.key === artifact.module)
-  const group = mod?.group
-  const groupConfig = group ? MODULE_GROUPS[group] : null
+  const taxonomy = useTaxonomy()
+  const mod = findModule(taxonomy, artifact.module)
+  const group = findGroup(taxonomy, mod?.groupKey)
 
   return (
     <tr className={cn('group transition-colors', selected ? 'bg-lipu-500/5' : 'hover:bg-gray-50 dark:hover:bg-night-801/40')}>
@@ -722,8 +711,8 @@ function TableRow({
       <td className="px-4 py-2.5 w-36">
         {mod ? (
           <div>
-            <p className={cn('text-[10px] font-semibold uppercase tracking-wider', groupConfig?.color)}>
-              {groupConfig?.label}
+            <p className={cn('text-[10px] font-semibold uppercase tracking-wider', colorClasses(group?.color).text)}>
+              {group?.label}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{mod.label}</p>
           </div>

@@ -3,18 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ExternalLink, Code2, GitBranch } from 'lucide-react'
-import type { Artifact, ArtifactStatus } from '@/lib/types'
-import { MODULES, MODULE_GROUPS } from '@/lib/modules'
+import { findGroup, findModule, type Artifact, type ArtifactStatus } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { StatusBadge } from './status-badge'
 import { formatDate, cn } from '@/lib/utils'
-
-const COLUMNS: { status: ArtifactStatus; label: string; accent: string; drop: string }[] = [
-  { status: 'borrador',    label: 'Borrador',    accent: 'text-gray-500 dark:text-gray-400',   drop: 'border-gray-300 bg-gray-50 dark:bg-gray-800/30' },
-  { status: 'en-revision', label: 'En revisión', accent: 'text-yellow-600 dark:text-yellow-400', drop: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20' },
-  { status: 'aprobado',    label: 'Aprobado',    accent: 'text-green-600 dark:text-green-400',  drop: 'border-green-300 bg-green-50 dark:bg-green-900/20' },
-  { status: 'entregado',   label: 'Entregado',   accent: 'text-lipu-500 dark:text-lipu-600',    drop: 'border-lipu-500/40 bg-lipu-600/5 dark:bg-lipu-600/10' },
-  { status: 'deprecado',   label: 'Deprecado',   accent: 'text-red-500 dark:text-red-400',      drop: 'border-red-300 bg-red-50 dark:bg-red-900/20' },
-]
 
 interface ArtifactKanbanProps {
   artifacts: Artifact[]
@@ -22,6 +15,13 @@ interface ArtifactKanbanProps {
 }
 
 export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProps) {
+  const { statuses } = useTaxonomy()
+  const columns = statuses.map((s) => ({
+    status: s.key,
+    label: s.label,
+    accent: colorClasses(s.color).text,
+    drop: colorClasses(s.color).drop,
+  }))
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [overColumn, setOverColumn] = useState<ArtifactStatus | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
@@ -68,7 +68,7 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
   return (
     <div className="flex-1 overflow-x-auto">
       <div className="flex gap-3 p-6 min-w-max h-full">
-        {COLUMNS.map((col) => {
+        {columns.map((col) => {
           const cards = byStatus(col.status)
           const isOver = overColumn === col.status
 
@@ -135,9 +135,9 @@ function KanbanCard({
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
 }) {
-  const mod = MODULES.find((m) => m.key === artifact.module)
-  const group = mod?.group
-  const groupConfig = group ? MODULE_GROUPS[group] : null
+  const taxonomy = useTaxonomy()
+  const mod = findModule(taxonomy, artifact.module)
+  const group = findGroup(taxonomy, mod?.groupKey)
 
   return (
     <div
@@ -153,7 +153,7 @@ function KanbanCard({
     >
       {/* Module */}
       {mod && (
-        <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', groupConfig?.color)}>
+        <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', colorClasses(group?.color).text)}>
           {mod.label}
         </p>
       )}

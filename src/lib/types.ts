@@ -1,12 +1,52 @@
-export type ArtifactStatus = 'borrador' | 'en-revision' | 'aprobado' | 'entregado' | 'deprecado'
+// Los estados viven en la tabla `statuses`; la key es un string libre.
+export type ArtifactStatus = string
 
-export type ModuleGroup = 'management' | 'operations' | 'administration'
+/* ── Taxonomía configurable (tablas module_groups / modules / statuses) ── */
 
-export interface ArtifactModule {
-  group: ModuleGroup
+export interface TaxonomyGroup {
   key: string
   label: string
+  color: string
+  sortOrder: number
+}
+
+export interface TaxonomyModule {
+  key: string
+  groupKey: string
+  label: string
   description: string
+  sortOrder: number
+}
+
+export interface TaxonomyStatus {
+  key: string
+  label: string
+  color: string
+  sortOrder: number
+  countsAsDone: boolean
+  isDefault: boolean
+}
+
+export interface Taxonomy {
+  groups: TaxonomyGroup[]
+  modules: TaxonomyModule[]
+  statuses: TaxonomyStatus[]
+}
+
+export function findModule(t: Taxonomy, key: string): TaxonomyModule | undefined {
+  return t.modules.find((m) => m.key === key)
+}
+
+export function findGroup(t: Taxonomy, key: string | undefined): TaxonomyGroup | undefined {
+  return key ? t.groups.find((g) => g.key === key) : undefined
+}
+
+export function findStatus(t: Taxonomy, key: string): TaxonomyStatus | undefined {
+  return t.statuses.find((s) => s.key === key)
+}
+
+export function defaultStatus(t: Taxonomy): TaxonomyStatus | undefined {
+  return t.statuses.find((s) => s.isDefault) ?? t.statuses[0]
 }
 
 export interface Artifact {
@@ -39,27 +79,4 @@ export interface SessionNote {
   sessionDate: string
   notes: string
   createdAt: string
-}
-
-export const STATUS_CONFIG: Record<ArtifactStatus, { label: string; color: string }> = {
-  borrador: {
-    label: 'Borrador',
-    color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  },
-  'en-revision': {
-    label: 'En revisión',
-    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  },
-  aprobado: {
-    label: 'Aprobado',
-    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  },
-  entregado: {
-    label: 'Entregado',
-    color: 'bg-lipu-600/20 text-lipu-500 dark:bg-lipu-600/10 dark:text-lipu-600',
-  },
-  deprecado: {
-    label: 'Deprecado',
-    color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  },
 }

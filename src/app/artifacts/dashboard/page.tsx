@@ -1,39 +1,35 @@
 import Link from 'next/link'
 import { readArtifacts } from '@/lib/artifacts'
-import { MODULES, MODULE_GROUPS } from '@/lib/modules'
-import { STATUS_CONFIG } from '@/lib/types'
-import type { ArtifactStatus } from '@/lib/types'
+import { getTaxonomy } from '@/lib/taxonomy'
+import { colorClasses } from '@/lib/colors'
 import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
-const STATUSES: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
-
 export default async function DashboardPage() {
-  const artifacts = await readArtifacts()
+  const [artifacts, taxonomy] = await Promise.all([readArtifacts(), getTaxonomy()])
   const total = artifacts.length
+  const statuses = taxonomy.statuses
+  const doneKeys = new Set(statuses.filter((s) => s.countsAsDone).map((s) => s.key))
 
   /* ── Global status counts ──────────────────────────────────── */
-  const byStatus = STATUSES.reduce<Record<ArtifactStatus, number>>(
-    (acc, s) => ({ ...acc, [s]: artifacts.filter((a) => a.status === s).length }),
-    {} as Record<ArtifactStatus, number>
+  const byStatus = statuses.reduce<Record<string, number>>(
+    (acc, s) => ({ ...acc, [s.key]: artifacts.filter((a) => a.status === s.key).length }),
+    {}
   )
 
   /* ── Per-module stats ──────────────────────────────────────── */
-  const moduleStats = MODULES.map((mod) => {
+  const moduleStats = taxonomy.modules.map((mod) => {
     const modArtifacts = artifacts.filter((a) => a.module === mod.key)
-    const counts = STATUSES.reduce<Record<ArtifactStatus, number>>(
-      (acc, s) => ({ ...acc, [s]: modArtifacts.filter((a) => a.status === s).length }),
-      {} as Record<ArtifactStatus, number>
+    const counts = statuses.reduce<Record<string, number>>(
+      (acc, s) => ({ ...acc, [s.key]: modArtifacts.filter((a) => a.status === s.key).length }),
+      {}
     )
-    const done = counts.aprobado + counts.entregado
+    const done = modArtifacts.filter((a) => doneKeys.has(a.status)).length
     const pct = modArtifacts.length ? Math.round((done / modArtifacts.length) * 100) : 0
     return { mod, total: modArtifacts.length, counts, done, pct }
   }).filter((r) => r.total > 0)
-
-  /* ── Group stats ───────────────────────────────────────────── */
-  const groupKeys = Object.keys(MODULE_GROUPS) as (keyof typeof MODULE_GROUPS)[]
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
@@ -59,14 +55,13 @@ export default async function DashboardPage() {
 
       {/* Status summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {STATUSES.map((s) => {
-          const cfg = STATUS_CONFIG[s]
-          const count = byStatus[s]
+        {statuses.map((s) => {
+          const count = byStatus[s.key]
           const pct = total ? Math.round((count / total) * 100) : 0
           return (
-            <div key={s} className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-4 space-y-2">
-              <span className={cn('inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full', cfg.color)}>
-                {cfg.label}
+            <div key={s.key} className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-4 space-y-2">
+              <span className={cn('inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full', colorClasses(s.color).badge)}>
+                {s.label}
               </span>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
               <div className="h-1.5 rounded-full bg-gray-100 dark:bg-night-801 overflow-hidden">
@@ -82,9 +77,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Per-group progress */}
-      {groupKeys.map((groupKey) => {
-        const group = MODULE_GROUPS[groupKey]
-        const rows = moduleStats.filter((r) => r.mod.group === groupKey)
+      {taxonomy.groups.map((group) => {
+        const rows = moduleStats.filter((r) => r.mod.groupKey === group.key)
         if (rows.length === 0) return null
 
         const groupTotal = rows.reduce((s, r) => s + r.total, 0)
@@ -92,11 +86,11 @@ export default async function DashboardPage() {
         const groupPct = groupTotal ? Math.round((groupDone / groupTotal) * 100) : 0
 
         return (
-          <section key={groupKey} className="space-y-3">
+          <section key={group.key} className="space-y-3">
             {/* Group header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={cn('text-xs font-semibold uppercase tracking-wider', group.color)}>
+                <span className={cn('text-xs font-semibold uppercase tracking-wider', colorClasses(group.color).text)}>
                   {group.label}
                 </span>
                 <span className="text-xs text-gray-400">· {groupTotal} artifacts</span>
@@ -111,9 +105,9 @@ export default async function DashboardPage() {
                   <tr className="border-b border-gray-100 dark:border-night-801">
                     <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Módulo</th>
                     <th className="text-center px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Total</th>
-                    {STATUSES.map((s) => (
-                      <th key={s} className="text-center px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                        {STATUS_CONFIG[s].label}
+                    {statuses.map((s) => (
+                      <th key={s.key} className="text-center px-3 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                        {s.label}
                       </th>
                     ))}
                     <th className="text-right px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-40">Progreso</th>
@@ -128,11 +122,11 @@ export default async function DashboardPage() {
                       <td className="px-3 py-3 text-center">
                         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{modTotal}</span>
                       </td>
-                      {STATUSES.map((s) => (
-                        <td key={s} className="px-3 py-3 text-center hidden sm:table-cell">
-                          {counts[s] > 0 ? (
-                            <span className={cn('inline-block text-[11px] font-semibold px-1.5 py-0.5 rounded-full', STATUS_CONFIG[s].color)}>
-                              {counts[s]}
+                      {statuses.map((s) => (
+                        <td key={s.key} className="px-3 py-3 text-center hidden sm:table-cell">
+                          {counts[s.key] > 0 ? (
+                            <span className={cn('inline-block text-[11px] font-semibold px-1.5 py-0.5 rounded-full', colorClasses(s.color).badge)}>
+                              {counts[s.key]}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-300 dark:text-gray-600">—</span>

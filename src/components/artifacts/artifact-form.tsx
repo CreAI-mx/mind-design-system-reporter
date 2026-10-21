@@ -4,8 +4,8 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Plus, Loader2, FileCode, ImagePlus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
-import type { Artifact, ArtifactStatus } from '@/lib/types'
-import { MODULES, MODULE_GROUPS } from '@/lib/modules'
+import { defaultStatus, type Artifact, type ArtifactStatus } from '@/lib/types'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { StatusBadge } from './status-badge'
 import { TagInput } from './tag-input'
 import { ArtifactPicker } from './artifact-picker'
@@ -18,7 +18,7 @@ const EMPTY: FormData = {
   module: '',
   version: '1.0',
   versionNote: '',
-  status: 'borrador',
+  status: '',
   description: '',
   tags: [],
   links: [],
@@ -29,8 +29,6 @@ const EMPTY: FormData = {
   parentId: undefined,
 }
 
-const STATUSES: ArtifactStatus[] = ['borrador', 'en-revision', 'aprobado', 'entregado', 'deprecado']
-
 interface ArtifactFormProps {
   initial?: Artifact
   mode: 'create' | 'edit'
@@ -39,6 +37,7 @@ interface ArtifactFormProps {
 export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const taxonomy = useTaxonomy()
   const [form, setForm] = useState<FormData>(
     initial
       ? {
@@ -56,7 +55,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
           date: initial.date,
           parentId: initial.parentId,
         }
-      : EMPTY
+      : { ...EMPTY, status: defaultStatus(taxonomy)?.key ?? '' }
   )
   const [saving, setSaving] = useState(false)
   const [linkInput, setLinkInput] = useState('')
@@ -102,11 +101,9 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
     }
   }
 
-  const groupedModules = MODULES.reduce<Record<string, typeof MODULES>>((acc, m) => {
-    if (!acc[m.group]) acc[m.group] = []
-    acc[m.group].push(m)
-    return acc
-  }, {})
+  const groupedModules = taxonomy.groups
+    .map((g) => ({ group: g, mods: taxonomy.modules.filter((m) => m.groupKey === g.key) }))
+    .filter(({ mods }) => mods.length > 0)
 
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-6 py-8 space-y-6">
@@ -133,8 +130,8 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
               className={inputClass}
             >
               <option value="">Seleccionar módulo</option>
-              {Object.entries(groupedModules).map(([group, mods]) => (
-                <optgroup key={group} label={MODULE_GROUPS[group as keyof typeof MODULE_GROUPS]?.label ?? group}>
+              {groupedModules.map(({ group, mods }) => (
+                <optgroup key={group.key} label={group.label}>
                   {mods.map((m) => (
                     <option key={m.key} value={m.key}>{m.label}</option>
                   ))}
@@ -175,8 +172,8 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
               onChange={(e) => update('status', e.target.value as ArtifactStatus)}
               className={inputClass}
             >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}</option>
+              {taxonomy.statuses.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
             <div className="mt-2">

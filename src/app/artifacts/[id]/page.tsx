@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getArtifact, getArtifactsByParentId } from '@/lib/artifacts'
-import { getModule, MODULE_GROUPS } from '@/lib/modules'
+import { getTaxonomy } from '@/lib/taxonomy'
+import { findGroup, findModule, type Taxonomy } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
 import { StatusBadge } from '@/components/artifacts/status-badge'
 import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
 import { ArtifactActionsMenu } from '@/components/artifacts/artifact-actions-menu'
@@ -19,14 +21,14 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
   const artifact = await getArtifact(id)
   if (!artifact) notFound()
 
-  const [parent, children] = await Promise.all([
+  const [parent, children, taxonomy] = await Promise.all([
     artifact.parentId ? getArtifact(artifact.parentId) : Promise.resolve(null),
     getArtifactsByParentId(id),
+    getTaxonomy(),
   ])
 
-  const mod = getModule(artifact.module)
-  const group = mod?.group
-  const groupConfig = group ? MODULE_GROUPS[group] : null
+  const mod = findModule(taxonomy, artifact.module)
+  const group = findGroup(taxonomy, mod?.groupKey)
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
@@ -41,8 +43,8 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             {mod && (
-              <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', groupConfig?.color)}>
-                {groupConfig?.label} · {mod.label}
+              <p className={cn('text-[10px] font-semibold uppercase tracking-wider mb-1', colorClasses(group?.color).text)}>
+                {group?.label} · {mod.label}
               </p>
             )}
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{artifact.name || 'Sin nombre'}</h1>
@@ -151,7 +153,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
             {parent && (
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xs text-gray-400 w-24 shrink-0">Versión anterior</span>
-                <VersionCard artifact={parent} />
+                <VersionCard artifact={parent} taxonomy={taxonomy} />
               </div>
             )}
             {(parent && children.length > 0) && (
@@ -164,7 +166,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
                 </span>
                 <div className="flex-1 space-y-2">
                   {children.map((child) => (
-                    <VersionCard key={child.id} artifact={child} />
+                    <VersionCard key={child.id} artifact={child} taxonomy={taxonomy} />
                   ))}
                 </div>
               </div>
@@ -200,8 +202,8 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   )
 }
 
-function VersionCard({ artifact }: { artifact: import('@/lib/types').Artifact }) {
-  const mod = getModule(artifact.module)
+function VersionCard({ artifact, taxonomy }: { artifact: import('@/lib/types').Artifact; taxonomy: Taxonomy }) {
+  const mod = findModule(taxonomy, artifact.module)
   return (
     <Link
       href={`/artifacts/${artifact.id}`}

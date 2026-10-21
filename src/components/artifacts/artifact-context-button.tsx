@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { ClipboardCopy, Check } from 'lucide-react'
-import { MODULES } from '@/lib/modules'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { formatDate } from '@/lib/utils'
-import type { Artifact } from '@/lib/types'
+import { findModule, findStatus, type Artifact, type Taxonomy } from '@/lib/types'
 
 interface ArtifactContextButtonProps {
   artifact: Artifact
@@ -12,15 +12,15 @@ interface ArtifactContextButtonProps {
   children: Artifact[]
 }
 
-function buildPrompt(artifact: Artifact, parent: Artifact | null, children: Artifact[]): string {
-  const mod = MODULES.find((m) => m.key === artifact.module)
+function buildPrompt(artifact: Artifact, parent: Artifact | null, children: Artifact[], taxonomy: Taxonomy): string {
+  const mod = findModule(taxonomy, artifact.module)
   const lines: string[] = []
 
   lines.push(`# Artifact: ${artifact.name}`)
   lines.push('')
   lines.push(`**Módulo:** ${mod?.label ?? artifact.module}`)
   lines.push(`**Versión:** ${artifact.version}${artifact.versionNote ? ` — ${artifact.versionNote}` : ''}`)
-  lines.push(`**Estado:** ${artifact.status}`)
+  lines.push(`**Estado:** ${findStatus(taxonomy, artifact.status)?.label ?? artifact.status}`)
   lines.push(`**Fecha:** ${formatDate(artifact.date)}`)
   if (artifact.tags.length > 0) lines.push(`**Etiquetas:** ${artifact.tags.join(', ')}`)
 
@@ -77,10 +77,11 @@ function buildPrompt(artifact: Artifact, parent: Artifact | null, children: Arti
 }
 
 export function ArtifactContextButton({ artifact, parent, children }: ArtifactContextButtonProps) {
+  const taxonomy = useTaxonomy()
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
-    const prompt = buildPrompt(artifact, parent, children)
+    const prompt = buildPrompt(artifact, parent, children, taxonomy)
     await navigator.clipboard.writeText(prompt)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

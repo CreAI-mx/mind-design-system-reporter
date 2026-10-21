@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Search, X, ArrowRight, Loader2 } from 'lucide-react'
 import Fuse from 'fuse.js'
 import { cn } from '@/lib/utils'
-import { getModule, MODULE_GROUPS } from '@/lib/modules'
-import { STATUS_CONFIG } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
+import { useTaxonomy } from '@/components/taxonomy-provider'
+import { findGroup, findModule, findStatus } from '@/lib/types'
 import type { Artifact } from '@/lib/types'
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function GlobalSearch({ open, onClose }: Props) {
+  const taxonomy = useTaxonomy()
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
@@ -101,9 +103,9 @@ export function GlobalSearch({ open, onClose }: Props) {
         {results.length > 0 ? (
           <ul className="max-h-[360px] overflow-y-auto py-1.5">
             {results.map((artifact, i) => {
-              const mod = getModule(artifact.module)
-              const group = mod?.group ? MODULE_GROUPS[mod.group] : null
-              const status = STATUS_CONFIG[artifact.status]
+              const mod = findModule(taxonomy, artifact.module)
+              const group = findGroup(taxonomy, mod?.groupKey)
+              const status = findStatus(taxonomy, artifact.status)
               const active = i === selected
               return (
                 <li key={artifact.id}>
@@ -120,13 +122,13 @@ export function GlobalSearch({ open, onClose }: Props) {
                         {artifact.name || 'Sin nombre'}
                       </p>
                       <p className="text-[11px] text-gray-400 truncate">
-                        {group && <span className={cn('font-medium', group.color)}>{group.label} · </span>}
+                        {group && <span className={cn('font-medium', colorClasses(group.color).text)}>{group.label} · </span>}
                         {mod?.label ?? artifact.module}
                         {artifact.version && ` · v${artifact.version}`}
                       </p>
                     </div>
-                    <span className={cn('text-[10px] font-medium shrink-0 px-2 py-0.5 rounded-full', status?.color)}>
-                      {status?.label}
+                    <span className={cn('text-[10px] font-medium shrink-0 px-2 py-0.5 rounded-full', colorClasses(status?.color).badge)}>
+                      {status?.label ?? artifact.status}
                     </span>
                     {active && <ArrowRight className="w-3.5 h-3.5 text-lipu-500 shrink-0" />}
                   </button>

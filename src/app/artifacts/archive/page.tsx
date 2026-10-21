@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { readArtifacts } from '@/lib/artifacts'
 import { readArchive } from '@/lib/archive'
 import type { ArchiveEntry } from '@/lib/archive'
-import { MODULES, MODULE_GROUPS } from '@/lib/modules'
-import { STATUS_CONFIG } from '@/lib/types'
+import { getTaxonomy } from '@/lib/taxonomy'
+import { findGroup, findModule, findStatus } from '@/lib/types'
+import { colorClasses } from '@/lib/colors'
 import { ArtifactRestoreButton } from '@/components/artifacts/artifact-restore-button'
 import { ArrowLeft, Archive, Clock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,7 @@ const ACTION_CONFIG = {
 }
 
 export default async function ArchivePage() {
-  const [currentArtifacts, entries] = await Promise.all([readArtifacts(), readArchive()])
+  const [currentArtifacts, entries, taxonomy] = await Promise.all([readArtifacts(), readArchive(), getTaxonomy()])
   const currentIds = new Set(currentArtifacts.map((a) => a.id))
 
   /* ── Deleted & recoverable: latest deletion per ID not in current ── */
@@ -72,10 +73,9 @@ export default async function ArchivePage() {
         ) : (
           <div className="space-y-2">
             {recoverable.map(({ artifact, archivedAt }) => {
-              const mod = MODULES.find((m) => m.key === artifact.module)
-              const group = mod?.group
-              const groupConfig = group ? MODULE_GROUPS[group] : null
-              const statusCfg = STATUS_CONFIG[artifact.status]
+              const mod = findModule(taxonomy, artifact.module)
+              const group = findGroup(taxonomy, mod?.groupKey)
+              const statusCfg = findStatus(taxonomy, artifact.status)
 
               return (
                 <div
@@ -86,8 +86,8 @@ export default async function ArchivePage() {
                   <div className="w-36 shrink-0">
                     {mod ? (
                       <>
-                        <p className={cn('text-[10px] font-semibold uppercase tracking-wider', groupConfig?.color)}>
-                          {groupConfig?.label}
+                        <p className={cn('text-[10px] font-semibold uppercase tracking-wider', colorClasses(group?.color).text)}>
+                          {group?.label}
                         </p>
                         <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{mod.label}</p>
                       </>
@@ -106,8 +106,8 @@ export default async function ArchivePage() {
                   </div>
 
                   {/* Status */}
-                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0', statusCfg.color)}>
-                    {statusCfg.label}
+                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0', colorClasses(statusCfg?.color).badge)}>
+                    {statusCfg?.label ?? artifact.status}
                   </span>
 
                   {/* Restore */}
@@ -131,7 +131,7 @@ export default async function ArchivePage() {
             {changelog.map((entry, i) => {
               const cfg = ACTION_CONFIG[entry.action]
               const ActionIcon = cfg.icon
-              const mod = MODULES.find((m) => m.key === entry.artifact.module)
+              const mod = findModule(taxonomy, entry.artifact.module)
               const isInCurrent = currentIds.has(entry.artifact.id)
 
               return (

@@ -16,13 +16,14 @@ interface SettingsViewProps {
   tagUsage: Record<string, number>
 }
 
-type Tab = 'groups' | 'modules' | 'statuses' | 'tags'
+type Tab = 'groups' | 'modules' | 'statuses' | 'tags' | 'account'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'groups', label: 'Grupos' },
   { id: 'modules', label: 'Módulos' },
   { id: 'statuses', label: 'Estados' },
   { id: 'tags', label: 'Etiquetas' },
+  { id: 'account', label: 'Cuenta' },
 ]
 
 const inputClass =
@@ -67,6 +68,84 @@ export function SettingsView(props: SettingsViewProps) {
       {tab === 'modules' && <ModulesTab {...props} />}
       {tab === 'statuses' && <StatusesTab {...props} />}
       {tab === 'tags' && <TagsTab {...props} />}
+      {tab === 'account' && <AccountTab />}
+    </div>
+  )
+}
+
+/* ── Cuenta (cambiar contraseña propia) ──────────────────────── */
+
+function AccountTab() {
+  const { toast } = useToast()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const tooShort = password.length > 0 && password.length < 8
+  const mismatch = confirm.length > 0 && password !== confirm
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (password.length < 8 || password !== confirm) return
+    setSaving(true)
+    try {
+      const { createClient } = await import('@/lib/supabase-browser')
+      const { error } = await createClient().auth.updateUser({ password })
+      if (error) {
+        toast(
+          /same.*password|different from the old/i.test(error.message)
+            ? 'La nueva contraseña debe ser distinta a la actual'
+            : 'No se pudo cambiar la contraseña',
+          'error'
+        )
+      } else {
+        toast('Contraseña actualizada', 'success')
+        setPassword('')
+        setConfirm('')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5 max-w-md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <h2 className="text-sm font-medium text-gray-900 dark:text-white">Cambiar contraseña</h2>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Cambia la contraseña de tu propia cuenta. Mínimo 8 caracteres.
+          </p>
+        </div>
+        <input
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Nueva contraseña"
+          className={inputClass}
+        />
+        <input
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder="Confirmar nueva contraseña"
+          className={inputClass}
+        />
+        {tooShort && <p className="text-xs text-red-500">Mínimo 8 caracteres.</p>}
+        {!tooShort && mismatch && <p className="text-xs text-red-500">Las contraseñas no coinciden.</p>}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={saving || password.length < 8 || password !== confirm}
+            className={btnPrimary}
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Guardar contraseña
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

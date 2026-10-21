@@ -138,18 +138,20 @@ tablas, usa esos mismos valores por defecto (solo lectura) y loguea un warning.
 
 ## Autenticación
 
-Toda la app requiere sesión (magic link por correo, sin contraseñas):
+Toda la app requiere sesión (correo + contraseña). Se usó magic link al inicio,
+pero el correo integrado de Supabase limita a 2 envíos/hora y sin SMTP propio
+no alcanza para el equipo, así que el login es con contraseña.
 
 1. **Crear usuarios**: en **Authentication → Users → Add user**, uno por correo
-   autorizado, con **Auto Confirm User** marcado.
+   autorizado, con **Auto Confirm User** marcado y una contraseña inicial.
 2. **Asignar rol admin**: corre `supabase/grant-admin.sql` en el SQL Editor
    (edita la lista de correos si cambia el equipo). Sin el rol, el usuario
    puede entrar pero no escribir en `/settings`.
 3. **Cerrar el registro público**: en **Authentication → Sign In / Providers →
    Email**, desactiva *Allow new users to sign up*.
-4. **URLs de redirección**: en **Authentication → URL Configuration**, pon el
-   *Site URL* de producción y agrega a *Redirect URLs*:
-   `http://localhost:3000/auth/callback` y `https://<tu-dominio>/auth/callback`.
+4. **Contraseñas**: cada quien cambia la suya en la app, en **Configuración →
+   Cuenta**. Si alguien la olvida, un admin la restablece con
+   `supabase/set-password.sql` (y borra la query del historial después).
 
 El alcance actual de la protección: las páginas exigen sesión (middleware) y
 las tablas de taxonomía exigen rol admin (RLS). Las tablas y APIs previas

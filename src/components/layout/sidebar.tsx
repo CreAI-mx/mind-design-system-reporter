@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Layers, LayoutDashboard, BarChart3, Archive, X } from 'lucide-react'
+import { BookOpen, Layers, LayoutDashboard, BarChart3, Archive, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: '/artifacts', label: 'Artifacts', icon: Layers },
   { href: '/artifacts/dashboard', label: 'Progreso', icon: BarChart3, sub: true },
   { href: '/artifacts/archive', label: 'Archivo', icon: Archive, sub: true },
+  { href: '/settings', label: 'Configuración', icon: Settings },
 ]
 
 interface SidebarProps {

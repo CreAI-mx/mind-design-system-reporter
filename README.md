@@ -37,11 +37,17 @@ Combina dos superficies en una sola app:
 Crea un archivo `.env.local` en la raíz:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://<tu-proyecto>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<tu-anon-key>
+# Servidor
+SUPABASE_URL=https://<tu-proyecto>.supabase.co
+SUPABASE_ANON_KEY=<tu-anon-key>
+
+# Navegador (login). Mismos valores; Next expande $VAR en archivos .env
+NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 ```
 
-Ambas se obtienen en **Supabase → Project Settings → API**.
+Ambas se obtienen en **Supabase → Project Settings → API**. En el hosting
+(Vercel, etc.) define las cuatro variables con sus valores completos.
 
 ---
 
@@ -114,6 +120,41 @@ alter table comments disable row level security;
 ### Storage bucket `artifact-images`
 
 En **Supabase → Storage**, crea un bucket público llamado `artifact-images`.
+
+### Taxonomía configurable (`module_groups`, `modules`, `statuses`)
+
+Los grupos, módulos y estados de los artifacts se configuran desde `/settings`
+y viven en la base de datos. Corre la migración completa (tablas + seeds + RLS):
+
+```
+supabase/migrations/20261021120000_taxonomy.sql
+```
+
+Pégala en el **SQL Editor** y ejecútala. Los seeds replican la taxonomía
+original, así que ningún artifact existente cambia. Si la app corre sin estas
+tablas, usa esos mismos valores por defecto (solo lectura) y loguea un warning.
+
+---
+
+## Autenticación
+
+Toda la app requiere sesión (magic link por correo, sin contraseñas):
+
+1. **Crear usuarios**: en **Authentication → Users → Add user**, uno por correo
+   autorizado, con **Auto Confirm User** marcado.
+2. **Asignar rol admin**: corre `supabase/grant-admin.sql` en el SQL Editor
+   (edita la lista de correos si cambia el equipo). Sin el rol, el usuario
+   puede entrar pero no escribir en `/settings`.
+3. **Cerrar el registro público**: en **Authentication → Sign In / Providers →
+   Email**, desactiva *Allow new users to sign up*.
+4. **URLs de redirección**: en **Authentication → URL Configuration**, pon el
+   *Site URL* de producción y agrega a *Redirect URLs*:
+   `http://localhost:3000/auth/callback` y `https://<tu-dominio>/auth/callback`.
+
+El alcance actual de la protección: las páginas exigen sesión (middleware) y
+las tablas de taxonomía exigen rol admin (RLS). Las tablas y APIs previas
+(`artifacts`, `tags`, comentarios, notas) siguen abiertas a nivel de API,
+como antes; cerrarlas es una fase aparte.
 
 ---
 

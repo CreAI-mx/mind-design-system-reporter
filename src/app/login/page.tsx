@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LayoutDashboard, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 
 const inputClass =
   'w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-night-801 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-lipu-500 focus:ring-2 focus:ring-lipu-500/20 transition-colors'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? '/settings'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [sending, setSending] = useState(false)
@@ -34,7 +36,7 @@ export default function LoginPage() {
         setSending(false)
         return
       }
-      router.push('/')
+      router.push(next.startsWith('/') ? next : '/settings')
       router.refresh()
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
@@ -43,7 +45,6 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-night-804">
       <div className="w-full max-w-sm bg-white dark:bg-night-802 rounded-2xl border border-gray-200 dark:border-night-801 p-8 space-y-6">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
@@ -60,7 +61,7 @@ export default function LoginPage() {
           <div className="space-y-1.5">
             <p className="text-sm font-medium text-gray-900 dark:text-white">Iniciar sesión</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Entra con tu correo y contraseña del equipo.
+              La configuración requiere sesión. Entra con tu correo y contraseña del equipo.
             </p>
           </div>
 
@@ -102,6 +103,15 @@ export default function LoginPage() {
           ¿Olvidaste tu contraseña? Pide a un admin que te la restablezca.
         </p>
       </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50 dark:bg-night-804">
+      <Suspense>
+        <LoginForm />
+      </Suspense>
     </div>
   )
 }

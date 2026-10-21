@@ -138,9 +138,10 @@ tablas, usa esos mismos valores por defecto (solo lectura) y loguea un warning.
 
 ## Autenticación
 
-Toda la app requiere sesión (correo + contraseña). Se usó magic link al inicio,
-pero el correo integrado de Supabase limita a 2 envíos/hora y sin SMTP propio
-no alcanza para el equipo, así que el login es con contraseña.
+La app es pública; solo `/settings` (la configuración de taxonomía) requiere
+sesión con correo + contraseña y rol admin. Se usó magic link al inicio, pero
+el correo integrado de Supabase limita a 2 envíos/hora y sin SMTP propio no
+alcanza para el equipo, así que el login es con contraseña.
 
 1. **Crear usuarios**: en **Authentication → Users → Add user**, uno por correo
    autorizado, con **Auto Confirm User** marcado y una contraseña inicial.

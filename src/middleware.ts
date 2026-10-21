@@ -23,10 +23,12 @@ export async function middleware(request: NextRequest) {
   // getUser() también refresca la sesión expirada vía cookies.
   const { data } = await supabase.auth.getUser()
 
-  if (!data.user) {
+  // Solo /settings exige sesión; el resto de la app es pública.
+  // El middleware corre en todas las páginas para mantener fresca la cookie.
+  if (!data.user && request.nextUrl.pathname.startsWith('/settings')) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/login'
-    loginUrl.search = ''
+    loginUrl.search = `next=${encodeURIComponent(request.nextUrl.pathname)}`
     return NextResponse.redirect(loginUrl)
   }
 
@@ -34,8 +36,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Protege todas las páginas. Excluye /login, /auth/*, /api/* (las rutas
-  // nuevas de taxonomía verifican sesión por su cuenta), assets de Next
-  // y archivos estáticos (favicon, /uploads, svg, etc.).
+  // Excluye /login, /auth/*, /api/* (las rutas de taxonomía verifican sesión
+  // por su cuenta), assets de Next y archivos estáticos (favicon, /uploads, svg).
   matcher: ['/((?!login|auth|api|_next/static|_next/image|.*\\..*).*)'],
 }

@@ -37,3 +37,6 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 .env*
+
+# Claude Code (skills/agents/hooks locales)
+.claude/

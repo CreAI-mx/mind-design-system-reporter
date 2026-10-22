@@ -1,18 +1,21 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import Fuse from 'fuse.js'
 import { Plus, Search, X, ExternalLink, Code2, ChevronRight, ChevronLeft, ArrowUpDown, Download, BarChart3, Loader2, LayoutList, Columns3, Table2, ChevronUp, ChevronDown } from 'lucide-react'
 import { findGroup, findModule, type Artifact, type ArtifactStatus, type Taxonomy } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
 import { useTaxonomy } from '@/components/taxonomy-provider'
 import { useSessionEmail } from '@/components/session-provider'
+import { useToast } from '@/components/ui/toast'
 import { StatusBadge } from './status-badge'
 import { ArtifactKanban } from './artifact-kanban'
 import { formatDate, cn } from '@/lib/utils'
 
-const PAGE_SIZE = 20
+const PAGE_SIZES = [20, 50, 100]
+const VIEW_KEY = 'mind_artifacts_view'
 
 type SortKey = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'status' | 'version-asc' | 'version-desc'
 type View = 'list' | 'kanban' | 'table'
@@ -56,22 +59,71 @@ function exportCsv(artifacts: Artifact[], taxonomy: Taxonomy) {
   URL.revokeObjectURL(url)
 }
 
+const SORT_KEYS: SortKey[] = ['date-desc', 'date-asc', 'name-asc', 'name-desc', 'status', 'version-asc', 'version-desc']
+const VIEWS: View[] = ['list', 'kanban', 'table']
+
 export function ArtifactList() {
   const taxonomy = useTaxonomy()
   const canEdit = !!useSessionEmail()
+  const { toast } = useToast()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ArtifactStatus | ''>('')
-  const [groupFilter, setGroupFilter] = useState('')
-  const [moduleFilter, setModuleFilter] = useState('')
-  const [tagFilter, setTagFilter] = useState('')
-  const [sort, setSort] = useState<SortKey>('date-desc')
-  const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState(false)
-  const [view, setView] = useState<View>('list')
+
+  // Filtros, orden, vista y página viven en la URL: navegar al detalle y
+  // volver no pierde nada, y las vistas filtradas se pueden compartir.
+  const statusFilter = searchParams.get('estado') ?? ''
+  const groupFilter = searchParams.get('grupo') ?? ''
+  const moduleFilter = searchParams.get('modulo') ?? ''
+  const tagFilter = searchParams.get('etiqueta') ?? ''
+  const sortParam = searchParams.get('orden') as SortKey | null
+  const sort: SortKey = sortParam && SORT_KEYS.includes(sortParam) ? sortParam : 'date-desc'
+  const page = Math.max(1, parseInt(searchParams.get('pagina') ?? '1', 10) || 1)
+  const pageSizeParam = parseInt(searchParams.get('porPagina') ?? '', 10)
+  const pageSize = PAGE_SIZES.includes(pageSizeParam) ? pageSizeParam : PAGE_SIZES[0]
+
+  // La búsqueda se escribe local y se sincroniza a la URL con debounce.
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
+
+  // La vista preferida se recuerda (localStorage); la URL gana si trae ?vista=.
+  const [storedView, setStoredView] = useState<View>('list')
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEW_KEY) as View | null
+    if (saved && VIEWS.includes(saved)) setStoredView(saved)
+  }, [])
+  const viewParam = searchParams.get('vista') as View | null
+  const view: View = viewParam && VIEWS.includes(viewParam) ? viewParam : storedView
+
+  const setParams = useCallback((updates: Record<string, string | null>) => {
+    const p = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null || value === '') p.delete(key)
+      else p.set(key, value)
+    }
+    const qs = p.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  function setView(v: View) {
+    setStoredView(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch {}
+    setParams({ vista: v === 'list' ? null : v })
+  }
+
+  useEffect(() => {
+    const current = searchParams.get('q') ?? ''
+    const next = query.trim()
+    if (current === next) return
+    const t = setTimeout(() => setParams({ q: next || null, pagina: null }), 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
 
   useEffect(() => {
     fetch('/api/artifacts')
@@ -83,9 +135,6 @@ export function ArtifactList() {
       .then((tags: string[]) => setAllTags(tags))
       .catch(() => {})
   }, [])
-
-  // Reset page on filter/sort change
-  useEffect(() => { setPage(1) }, [query, statusFilter, groupFilter, moduleFilter, tagFilter, sort])
 
   const moduleOptions = useMemo(
     () => (groupFilter ? taxonomy.modules.filter((m) => m.groupKey === groupFilter) : taxonomy.modules),
@@ -125,16 +174,13 @@ export function ArtifactList() {
     }
   }, [filtered, sort, taxonomy.statuses])
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize))
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize)
   const hasFilters = query || statusFilter || groupFilter || moduleFilter || tagFilter
 
   function clearFilters() {
     setQuery('')
-    setStatusFilter('')
-    setGroupFilter('')
-    setModuleFilter('')
-    setTagFilter('')
+    setParams({ q: null, estado: null, grupo: null, modulo: null, etiqueta: null, pagina: null })
   }
 
   function toggleSelect(id: string) {
@@ -161,12 +207,20 @@ export function ArtifactList() {
   }
 
   async function handleKanbanStatusChange(id: string, status: ArtifactStatus) {
-    await fetch(`/api/artifacts/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
+    const previous = artifacts.find((a) => a.id === id)?.status
+    // Optimista: se revierte si el servidor rechaza el cambio.
     setArtifacts((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
+    try {
+      const res = await fetch(`/api/artifacts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      if (previous) setArtifacts((prev) => prev.map((a) => (a.id === id ? { ...a, status: previous } : a)))
+      toast('No se pudo cambiar el estado', 'error')
+    }
   }
 
   async function applyBulk(operation: 'status' | 'addTag', value: string) {
@@ -188,6 +242,8 @@ export function ArtifactList() {
         })
       )
       setSelectedIds(new Set())
+    } catch {
+      toast('No se pudo aplicar el cambio a los seleccionados', 'error')
     } finally {
       setApplying(false)
     }
@@ -214,6 +270,7 @@ export function ArtifactList() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar artifacts..."
+            aria-label="Buscar artifacts"
             className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-night-801 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-lipu-500 focus:ring-2 focus:ring-lipu-500/20 transition-colors"
           />
         </div>
@@ -221,7 +278,8 @@ export function ArtifactList() {
         {/* Filters */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filtrar por estado"
+          onChange={(e) => setParams({ estado: e.target.value || null, pagina: null })}
           className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
         >
           <option value="">Todos los estados</option>
@@ -230,7 +288,8 @@ export function ArtifactList() {
 
         <select
           value={groupFilter}
-          onChange={(e) => { setGroupFilter(e.target.value); setModuleFilter('') }}
+          aria-label="Filtrar por grupo"
+          onChange={(e) => setParams({ grupo: e.target.value || null, modulo: null, pagina: null })}
           className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
         >
           <option value="">Todos los grupos</option>
@@ -239,7 +298,8 @@ export function ArtifactList() {
 
         <select
           value={moduleFilter}
-          onChange={(e) => setModuleFilter(e.target.value)}
+          aria-label="Filtrar por módulo"
+          onChange={(e) => setParams({ modulo: e.target.value || null, pagina: null })}
           className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
         >
           <option value="">Todos los módulos</option>
@@ -249,7 +309,8 @@ export function ArtifactList() {
         {allTags.length > 0 && (
           <select
             value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
+            aria-label="Filtrar por etiqueta"
+            onChange={(e) => setParams({ etiqueta: e.target.value || null, pagina: null })}
             className="px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-night-801 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-lipu-500 transition-colors"
           >
             <option value="">Todas las etiquetas</option>
@@ -262,8 +323,9 @@ export function ArtifactList() {
           <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="py-2 text-sm bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none transition-colors"
+            aria-label="Ordenar por"
+            onChange={(e) => setParams({ orden: e.target.value === 'date-desc' ? null : e.target.value, pagina: null })}
+            className="py-2 text-sm rounded-lg bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-lipu-500/20 transition-colors"
           >
             {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -282,6 +344,8 @@ export function ArtifactList() {
           <div className="flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
             <button
               onClick={() => setView('list')}
+              aria-pressed={view === 'list'}
+              aria-label="Vista lista"
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-2 text-sm transition-colors',
                 view === 'list'
@@ -294,6 +358,8 @@ export function ArtifactList() {
             </button>
             <button
               onClick={() => setView('table')}
+              aria-pressed={view === 'table'}
+              aria-label="Vista tabla"
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-2 text-sm border-l border-gray-200 dark:border-gray-600 transition-colors',
                 view === 'table'
@@ -306,6 +372,8 @@ export function ArtifactList() {
             </button>
             <button
               onClick={() => setView('kanban')}
+              aria-pressed={view === 'kanban'}
+              aria-label="Vista kanban"
               className={cn(
                 'flex items-center gap-1.5 px-2.5 py-2 text-sm border-l border-gray-200 dark:border-gray-600 transition-colors',
                 view === 'kanban'
@@ -395,6 +463,7 @@ export function ArtifactList() {
                 checked={allPageSelected}
                 ref={(el) => { if (el) el.indeterminate = somePageSelected && !allPageSelected }}
                 onChange={toggleSelectPage}
+                aria-label={allPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
                 className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer shrink-0"
                 title={allPageSelected ? 'Deseleccionar página' : 'Seleccionar página'}
               />
@@ -403,10 +472,28 @@ export function ArtifactList() {
               {sorted.length === 0
                 ? '0 artifacts'
                 : totalPages > 1
-                  ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, sorted.length)} de ${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`
+                  ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, sorted.length)} de ${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`
                   : `${sorted.length} artifact${sorted.length !== 1 ? 's' : ''}`}
             </span>
             {hasFilters && <span className="text-xs text-gray-400">· filtrado de {artifacts.length}</span>}
+            {canEdit && allPageSelected && selectedIds.size < sorted.length && (
+              <button
+                onClick={() => setSelectedIds(new Set(sorted.map((a) => a.id)))}
+                className="text-xs text-lipu-500 hover:text-lipu-600 font-medium transition-colors"
+              >
+                Seleccionar los {sorted.length} filtrados
+              </button>
+            )}
+            {sorted.length > PAGE_SIZES[0] && (
+              <select
+                value={pageSize}
+                aria-label="Artifacts por página"
+                onChange={(e) => setParams({ porPagina: e.target.value === String(PAGE_SIZES[0]) ? null : e.target.value, pagina: null })}
+                className="ml-auto text-xs rounded-lg bg-transparent text-gray-500 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-lipu-500/20 transition-colors"
+              >
+                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n} / página</option>)}
+              </select>
+            )}
           </div>
 
           {/* List / Table */}
@@ -417,10 +504,10 @@ export function ArtifactList() {
               <ArtifactTable
                 artifacts={paginated}
                 sort={sort}
-                onSort={setSort}
+                onSort={(k) => setParams({ orden: k === 'date-desc' ? null : k, pagina: null })}
                 selected={selectedIds}
                 onToggleSelect={toggleSelect}
-                onTagClick={setTagFilter}
+                onTagClick={(t) => setParams({ etiqueta: t, pagina: null })}
                 allSelected={allPageSelected}
                 someSelected={somePageSelected}
                 onToggleAll={toggleSelectPage}
@@ -432,7 +519,7 @@ export function ArtifactList() {
                   <ArtifactRow
                     key={artifact.id}
                     artifact={artifact}
-                    onTagClick={setTagFilter}
+                    onTagClick={(t) => setParams({ etiqueta: t, pagina: null })}
                     selected={selectedIds.has(artifact.id)}
                     onToggleSelect={toggleSelect}
                     selectable={canEdit}
@@ -446,7 +533,7 @@ export function ArtifactList() {
           {totalPages > 1 && (
             <div className="px-6 py-3 border-t border-gray-200 dark:border-night-801 flex items-center justify-between">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => setParams({ pagina: page - 1 <= 1 ? null : String(page - 1) })}
                 disabled={page === 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
@@ -468,7 +555,7 @@ export function ArtifactList() {
                     ) : (
                       <button
                         key={p}
-                        onClick={() => setPage(p as number)}
+                        onClick={() => setParams({ pagina: p === 1 ? null : String(p) })}
                         className={cn(
                           'w-7 h-7 rounded-lg text-xs font-medium transition-colors',
                           page === p
@@ -483,7 +570,7 @@ export function ArtifactList() {
               </div>
 
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => setParams({ pagina: String(Math.min(totalPages, page + 1)) })}
                 disabled={page === totalPages}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-night-801 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
@@ -512,6 +599,7 @@ function ArtifactRow({
   selectable?: boolean
 }) {
   const taxonomy = useTaxonomy()
+  const [tagsExpanded, setTagsExpanded] = useState(false)
   const mod = findModule(taxonomy, artifact.module)
   const group = findGroup(taxonomy, mod?.groupKey)
 
@@ -522,6 +610,7 @@ function ArtifactRow({
           type="checkbox"
           checked={selected ?? false}
           onChange={() => onToggleSelect?.(artifact.id)}
+          aria-label={`Seleccionar ${artifact.name || 'artifact sin nombre'}`}
           className="w-3.5 h-3.5 accent-lipu-500 shrink-0 cursor-pointer"
         />
       )}
@@ -546,7 +635,7 @@ function ArtifactRow({
         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{artifact.name || 'Sin nombre'}</p>
         {artifact.tags.length > 0 && (
           <div className="flex gap-1 mt-0.5 flex-wrap">
-            {artifact.tags.slice(0, 3).map((tag) => (
+            {(tagsExpanded ? artifact.tags : artifact.tags.slice(0, 3)).map((tag) => (
               <button
                 key={tag}
                 type="button"
@@ -556,7 +645,16 @@ function ArtifactRow({
                 {tag}
               </button>
             ))}
-            {artifact.tags.length > 3 && <span className="text-[10px] text-gray-400">+{artifact.tags.length - 3}</span>}
+            {artifact.tags.length > 3 && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTagsExpanded((v) => !v) }}
+                title={tagsExpanded ? 'Mostrar menos' : artifact.tags.slice(3).join(', ')}
+                className="text-[10px] text-gray-400 hover:text-lipu-500 transition-colors"
+              >
+                {tagsExpanded ? 'menos' : `+${artifact.tags.length - 3}`}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -624,6 +722,7 @@ function ArtifactTable({
                 checked={allSelected}
                 ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
                 onChange={onToggleAll}
+                aria-label="Seleccionar página"
                 className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
               />
             </th>
@@ -704,6 +803,7 @@ function TableRow({
   selectable: boolean
 }) {
   const taxonomy = useTaxonomy()
+  const [tagsExpanded, setTagsExpanded] = useState(false)
   const mod = findModule(taxonomy, artifact.module)
   const group = findGroup(taxonomy, mod?.groupKey)
 
@@ -715,6 +815,7 @@ function TableRow({
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(artifact.id)}
+            aria-label={`Seleccionar ${artifact.name || 'artifact sin nombre'}`}
             className="w-3.5 h-3.5 accent-lipu-500 cursor-pointer"
           />
         </td>
@@ -750,7 +851,7 @@ function TableRow({
       </td>
       <td className="px-4 py-2.5">
         <div className="flex gap-1 flex-wrap">
-          {artifact.tags.slice(0, 2).map((tag) => (
+          {(tagsExpanded ? artifact.tags : artifact.tags.slice(0, 2)).map((tag) => (
             <button
               key={tag}
               onClick={() => onTagClick(tag)}
@@ -760,7 +861,14 @@ function TableRow({
             </button>
           ))}
           {artifact.tags.length > 2 && (
-            <span className="text-[10px] text-gray-400 self-center">+{artifact.tags.length - 2}</span>
+            <button
+              type="button"
+              onClick={() => setTagsExpanded((v) => !v)}
+              title={tagsExpanded ? 'Mostrar menos' : artifact.tags.slice(2).join(', ')}
+              className="text-[10px] text-gray-400 hover:text-lipu-500 self-center transition-colors"
+            >
+              {tagsExpanded ? 'menos' : `+${artifact.tags.length - 2}`}
+            </button>
           )}
         </div>
       </td>

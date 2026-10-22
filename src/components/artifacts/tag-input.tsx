@@ -35,13 +35,10 @@ export function TagInput({ value, onChange }: TagInputProps) {
     const normalized = opt.startsWith('__create__:') ? opt.slice(11) : opt
     if (!normalized || value.includes(normalized)) return
     onChange([...value, normalized])
+    // La etiqueta nueva solo se persiste al guardar el artifact (la API de
+    // artifacts hace ensureTags): cancelar el form no deja tags huérfanos.
     if (!allTags.includes(normalized)) {
       setAllTags((prev) => [...prev, normalized].sort())
-      fetch('/api/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ names: [normalized] }),
-      }).catch(() => {})
     }
     setInput('')
     setOpen(false)

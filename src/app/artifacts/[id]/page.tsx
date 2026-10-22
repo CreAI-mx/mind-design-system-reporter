@@ -6,6 +6,9 @@ import { getTaxonomy } from '@/lib/taxonomy'
 import { findGroup, findModule, type Taxonomy } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
 import { StatusBadge } from '@/components/artifacts/status-badge'
+import { StatusQuickChange } from '@/components/artifacts/status-quick-change'
+import { CopyLinkButton } from '@/components/artifacts/copy-link-button'
+import { BackLink } from '@/components/layout/back-link'
 import { ArtifactContextButton } from '@/components/artifacts/artifact-context-button'
 import { ArtifactActionsMenu } from '@/components/artifacts/artifact-actions-menu'
 import { CommentsSection } from '@/components/artifacts/comments-section'
@@ -13,7 +16,7 @@ import { SessionNotesSection } from '@/components/artifacts/session-notes-sectio
 import { CodeSection } from '@/components/artifacts/code-section'
 import { ImageGallery } from '@/components/artifacts/image-gallery'
 import { formatDate, cn } from '@/lib/utils'
-import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, ArrowLeft, GitBranch, ChevronRight } from 'lucide-react'
+import { ExternalLink, Calendar, Tag, Code2, Image, Pencil, GitBranch, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,11 +38,8 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-      {/* Back */}
-      <Link href="/artifacts" className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Volver a Artifacts
-      </Link>
+      {/* Back: respeta el origen (home, búsqueda, lista filtrada) */}
+      <BackLink fallback="/artifacts" label="Volver" />
 
       {/* Header */}
       <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 p-5">
@@ -53,6 +53,7 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{artifact.name || 'Sin nombre'}</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <CopyLinkButton />
             <ArtifactContextButton artifact={artifact} parent={parent} children={children} />
             {canEdit && (
               <>
@@ -80,7 +81,11 @@ export default async function ArtifactDetailPage({ params }: { params: Promise<{
         )}
 
         <div className="mt-4 flex flex-wrap gap-3 items-center">
-          <StatusBadge status={artifact.status} />
+          {canEdit ? (
+            <StatusQuickChange artifactId={artifact.id} status={artifact.status} />
+          ) : (
+            <StatusBadge status={artifact.status} />
+          )}
           <span className="text-xs text-gray-400 flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {formatDate(artifact.date)}

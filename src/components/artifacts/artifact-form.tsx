@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Plus, Loader2, FileCode, ImagePlus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
@@ -60,6 +60,25 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
   const [saving, setSaving] = useState(false)
   const [linkInput, setLinkInput] = useState('')
   const [imageInput, setImageInput] = useState('')
+
+  // Guard de cambios sin guardar: compara contra el estado inicial del form.
+  const initialRef = useRef<string | null>(null)
+  if (initialRef.current === null) initialRef.current = JSON.stringify(form)
+  const isDirty = !saving && JSON.stringify(form) !== initialRef.current
+
+  useEffect(() => {
+    if (!isDirty) return
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
+
+  function handleCancel() {
+    if (isDirty && !confirm('Tienes cambios sin guardar. ¿Descartarlos?')) return
+    router.back()
+  }
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -186,6 +205,8 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
               value={form.version}
               onChange={(e) => update('version', e.target.value)}
               placeholder="1.0"
+              pattern="[0-9]+(\.[0-9]+)*"
+              title="Formato numérico: 1, 1.0, 2.1.3…"
               className={inputClass}
             />
           </Field>
@@ -319,7 +340,7 @@ export function ArtifactForm({ initial, mode }: ArtifactFormProps) {
       <div className="flex gap-3 justify-end pb-4">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={handleCancel}
           className={btnSecondary}
         >
           Cancelar

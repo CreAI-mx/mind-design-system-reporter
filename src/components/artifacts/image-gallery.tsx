@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export function ImageGallery({ urls }: { urls: string[] }) {
   const [lightbox, setLightbox] = useState<number | null>(null)
+  const lightboxRef = useRef<HTMLDivElement>(null)
+
+  // Al abrir, el contenedor recibe el foco para que Escape y las flechas
+  // funcionen sin clic previo.
+  useEffect(() => {
+    if (lightbox !== null) lightboxRef.current?.focus()
+  }, [lightbox])
 
   const images = urls.filter(
     (u) => u.startsWith('/uploads/') || /\.(png|jpe?g|gif|webp|svg|avif)(\?|$)/i.test(u)
@@ -61,14 +67,19 @@ export function ImageGallery({ urls }: { urls: string[] }) {
       {/* Lightbox */}
       {lightbox !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          ref={lightboxRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagen ${lightbox + 1} de ${images.length}`}
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center focus:outline-none"
           onClick={() => setLightbox(null)}
           onKeyDown={handleKey}
-          tabIndex={0}
+          tabIndex={-1}
         >
           {/* Close */}
           <button
             onClick={() => setLightbox(null)}
+            aria-label="Cerrar imagen"
             className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -85,6 +96,7 @@ export function ImageGallery({ urls }: { urls: string[] }) {
           {images.length > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); prev() }}
+              aria-label="Imagen anterior"
               className="absolute left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             >
               <ChevronLeft className="w-6 h-6" />
@@ -105,6 +117,7 @@ export function ImageGallery({ urls }: { urls: string[] }) {
           {images.length > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); next() }}
+              aria-label="Imagen siguiente"
               className="absolute right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             >
               <ChevronRight className="w-6 h-6" />

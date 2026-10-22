@@ -52,10 +52,9 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
     setOverColumn(null)
   }
 
-  async function handleDrop(e: React.DragEvent, status: ArtifactStatus) {
-    e.preventDefault()
-    setOverColumn(null)
-    const id = e.dataTransfer.getData('artifactId')
+  // Vía única de cambio de estado: la usan el drop del drag y el select de
+  // la tarjeta (alternativa accesible/touch).
+  async function changeStatus(id: string, status: ArtifactStatus) {
     const artifact = artifacts.find((a) => a.id === id)
     if (!artifact || artifact.status === status) return
     setUpdating(id)
@@ -65,6 +64,12 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
       setUpdating(null)
       setDraggingId(null)
     }
+  }
+
+  async function handleDrop(e: React.DragEvent, status: ArtifactStatus) {
+    e.preventDefault()
+    setOverColumn(null)
+    await changeStatus(e.dataTransfer.getData('artifactId'), status)
   }
 
   return (
@@ -109,6 +114,7 @@ export function ArtifactKanban({ artifacts, onStatusChange }: ArtifactKanbanProp
                     updating={updating === artifact.id}
                     onDragStart={(e) => handleDragStart(e, artifact.id)}
                     onDragEnd={handleDragEnd}
+                    onChangeStatus={canEdit ? changeStatus : undefined}
                   />
                 ))}
                 {cards.length === 0 && (
@@ -132,6 +138,7 @@ function KanbanCard({
   updating,
   onDragStart,
   onDragEnd,
+  onChangeStatus,
 }: {
   artifact: Artifact
   draggable: boolean
@@ -139,6 +146,7 @@ function KanbanCard({
   updating: boolean
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
+  onChangeStatus?: (id: string, status: ArtifactStatus) => void
 }) {
   const taxonomy = useTaxonomy()
   const mod = findModule(taxonomy, artifact.module)
@@ -198,6 +206,21 @@ function KanbanCard({
           <span className="text-[10px] text-gray-400">{formatDate(artifact.date)}</span>
         </div>
       </div>
+
+      {/* Alternativa accesible al drag: también funciona con teclado y touch */}
+      {onChangeStatus && (
+        <select
+          value={artifact.status}
+          onChange={(e) => onChangeStatus(artifact.id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Cambiar estado de ${artifact.name || 'artifact sin nombre'}`}
+          className="mt-2 w-full text-[10px] rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-night-801 px-1.5 py-1 text-gray-600 dark:text-gray-300 focus:outline-none focus:border-lipu-500 focus:ring-2 focus:ring-lipu-500/20 transition-colors"
+        >
+          {taxonomy.statuses.map((s) => (
+            <option key={s.key} value={s.key}>{s.label}</option>
+          ))}
+        </select>
+      )}
     </div>
   )
 }

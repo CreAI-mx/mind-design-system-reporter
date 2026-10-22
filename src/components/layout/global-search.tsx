@@ -23,6 +23,8 @@ export function GlobalSearch({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -38,9 +40,12 @@ export function GlobalSearch({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
+      previousFocus.current = document.activeElement as HTMLElement | null
       setQuery('')
       setSelected(0)
       setTimeout(() => inputRef.current?.focus(), 50)
+    } else {
+      previousFocus.current?.focus()
     }
   }, [open])
 
@@ -68,6 +73,17 @@ export function GlobalSearch({ open, onClose }: Props) {
     else if (e.key === 'Escape') onClose()
   }
 
+  // Focus trap: Tab circula dentro del diálogo.
+  function trapFocus(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab' || !dialogRef.current) return
+    const focusables = dialogRef.current.querySelectorAll<HTMLElement>('input, button, [tabindex]:not([tabindex="-1"])')
+    if (!focusables.length) return
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  }
+
   if (!open) return null
 
   return (
@@ -76,8 +92,13 @@ export function GlobalSearch({ open, onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Búsqueda global de artifacts"
         className="w-full max-w-xl bg-white dark:bg-night-802 rounded-2xl border border-gray-200 dark:border-night-801 shadow-xl overflow-hidden"
         onClick={e => e.stopPropagation()}
+        onKeyDown={trapFocus}
       >
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-night-801">

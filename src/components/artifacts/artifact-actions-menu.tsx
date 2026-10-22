@@ -8,8 +8,9 @@ import {
   Copy, Trash2, Loader2,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
+import { useTaxonomy } from '@/components/taxonomy-provider'
 import { cn } from '@/lib/utils'
-import type { Artifact } from '@/lib/types'
+import { defaultStatus, type Artifact } from '@/lib/types'
 
 function bumpVersion(version: string): string {
   const parts = version.split('.')
@@ -29,6 +30,7 @@ type NotifyState = 'idle' | 'loading' | 'sent' | 'error'
 export function ArtifactActionsMenu({ artifact, hasParent, hasSlack }: Props) {
   const router = useRouter()
   const { toast } = useToast()
+  const taxonomy = useTaxonomy()
   const ref = useRef<HTMLDivElement>(null)
 
   const [open, setOpen] = useState(false)
@@ -40,15 +42,23 @@ export function ArtifactActionsMenu({ artifact, hasParent, hasSlack }: Props) {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
+    function close() {
+      setOpen(false)
+      setConfirmDelete(false)
+      setView('menu')
+    }
     function onOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-        setConfirmDelete(false)
-        setView('menu')
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) close()
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') close()
     }
     document.addEventListener('mousedown', onOutside)
-    return () => document.removeEventListener('mousedown', onOutside)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onOutside)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   async function handleNotify() {
@@ -81,7 +91,7 @@ export function ArtifactActionsMenu({ artifact, hasParent, hasSlack }: Props) {
           module: artifact.module,
           version: bumpVersion(artifact.version),
           versionNote: '',
-          status: 'borrador',
+          status: defaultStatus(taxonomy)?.key ?? artifact.status,
           description: artifact.description,
           tags: artifact.tags,
           links: artifact.links,
@@ -103,12 +113,31 @@ export function ArtifactActionsMenu({ artifact, hasParent, hasSlack }: Props) {
     }
   }
 
+  async function handleUndoDelete() {
+    try {
+      const res = await fetch(`/api/artifacts/${artifact.id}/restore`, { method: 'POST' })
+      if (!res.ok) throw new Error()
+      toast('Artifact restaurado', 'success')
+      router.refresh()
+    } catch {
+      toast('No se pudo restaurar. Búscalo en el Archivo.', 'error')
+    }
+  }
+
   async function handleDelete() {
     setDeleting(true)
-    await fetch(`/api/artifacts/${artifact.id}`, { method: 'DELETE' })
-    toast('Artifact eliminado', 'success')
-    router.push('/artifacts')
-    router.refresh()
+    try {
+      const res = await fetch(`/api/artifacts/${artifact.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      toast('Artifact eliminado', 'success', {
+        action: { label: 'Deshacer', onClick: handleUndoDelete },
+      })
+      router.push('/artifacts')
+      router.refresh()
+    } catch {
+      toast('Error al eliminar el artifact', 'error')
+      setDeleting(false)
+    }
   }
 
   const item = 'flex items-center gap-2.5 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-night-801 transition-colors text-left disabled:opacity-50'

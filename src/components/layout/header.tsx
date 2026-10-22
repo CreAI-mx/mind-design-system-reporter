@@ -9,6 +9,8 @@ const TITLES: Record<string, string> = {
   '/design-system': 'Design System',
   '/artifacts': 'Artifacts',
   '/artifacts/new': 'Nuevo Artifact',
+  '/artifacts/dashboard': 'Progreso',
+  '/artifacts/archive': 'Archivo',
   '/settings': 'Configuración',
 }
 
@@ -23,7 +25,11 @@ export function Header({ onMenuClick, onSearchClick, userEmail }: HeaderProps) {
 
   const title =
     TITLES[pathname] ??
-    (pathname.endsWith('/edit') ? 'Editar Artifact' : 'Artifact')
+    (pathname.endsWith('/edit')
+      ? 'Editar Artifact'
+      : pathname.endsWith('/compare')
+        ? 'Comparar versiones'
+        : 'Artifact')
 
   return (
     <header className="h-14 flex items-center gap-3 px-4 lg:px-6 bg-white dark:bg-night-802 border-b border-gray-200 dark:border-night-801 shrink-0">

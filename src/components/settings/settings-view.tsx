@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, Check, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Eye, EyeOff, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { colorClasses, COLOR_TOKEN_KEYS } from '@/lib/colors'
 import type { Taxonomy, TaxonomyGroup, TaxonomyModule, TaxonomyStatus } from '@/lib/types'
@@ -44,6 +44,19 @@ const iconBtn =
 export function SettingsView(props: SettingsViewProps) {
   const [tab, setTab] = useState<Tab>('groups')
 
+  // La pestaña activa vive en el hash: recargar o compartir conserva dónde estabas.
+  useEffect(() => {
+    const fromHash = window.location.hash.slice(1) as Tab
+    if (TABS.some((t) => t.id === fromHash)) setTab(fromHash)
+  }, [])
+
+  function selectTab(t: Tab) {
+    setTab(t)
+    history.replaceState(null, '', t === 'groups'
+      ? window.location.pathname + window.location.search
+      : `#${t}`)
+  }
+
   return (
     <div className="space-y-5">
       {/* Tabs */}
@@ -51,7 +64,7 @@ export function SettingsView(props: SettingsViewProps) {
         {TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => selectTab(t.id)}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === t.id
@@ -79,6 +92,7 @@ function AccountTab() {
   const { toast } = useToast()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [show, setShow] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const tooShort = password.length > 0 && password.length < 8
@@ -117,16 +131,27 @@ function AccountTab() {
             Cambia la contraseña de tu propia cuenta. Mínimo 8 caracteres.
           </p>
         </div>
+        <div className="relative">
+          <input
+            type={show ? 'text' : 'password'}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Nueva contraseña"
+            className={cn(inputClass, 'pr-10')}
+          />
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            tabIndex={-1}
+            aria-label={show ? 'Ocultar contraseñas' : 'Mostrar contraseñas'}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
         <input
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Nueva contraseña"
-          className={inputClass}
-        />
-        <input
-          type="password"
+          type={show ? 'text' : 'password'}
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
@@ -157,7 +182,7 @@ function useApi() {
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
 
-  async function call(method: string, url: string, body: unknown): Promise<boolean> {
+  async function call(method: string, url: string, body: unknown, opts?: { refresh?: boolean }): Promise<boolean> {
     setBusy(true)
     try {
       const res = await fetch(url, {
@@ -170,7 +195,7 @@ function useApi() {
         toast(data.error ?? 'Error al guardar', 'error')
         return false
       }
-      router.refresh()
+      if (opts?.refresh !== false) router.refresh()
       return true
     } catch {
       toast('Error de conexión', 'error')
@@ -181,6 +206,20 @@ function useApi() {
   }
 
   return { call, busy }
+}
+
+// Orden local optimista: las flechas reordenan al instante y el PUT corre
+// en segundo plano; si falla, se revierte. Se resincroniza cuando el server
+// devuelve datos nuevos (crear/editar/borrar hacen router.refresh).
+function useOrderedList<T extends { key: string }>(items: T[]) {
+  const [order, setOrder] = useState(() => items.map((i) => i.key))
+  useEffect(() => { setOrder(items.map((i) => i.key)) }, [items])
+  const byKey = new Map(items.map((i) => [i.key, i]))
+  const list = [
+    ...order.map((k) => byKey.get(k)).filter((i): i is T => !!i),
+    ...items.filter((i) => !order.includes(i.key)),
+  ]
+  return { list, order, setOrder }
 }
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
@@ -227,13 +266,17 @@ function GroupsTab({ taxonomy }: SettingsViewProps) {
   const { call, busy } = useApi()
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const { list: groups, order, setOrder } = useOrderedList(taxonomy.groups)
 
   const moduleCount = (key: string) => taxonomy.modules.filter((m) => m.groupKey === key).length
 
   async function move(index: number, dir: -1 | 1) {
-    const keys = taxonomy.groups.map((g) => g.key)
+    const previous = order
+    const keys = groups.map((g) => g.key)
     ;[keys[index], keys[index + dir]] = [keys[index + dir], keys[index]]
-    await call('PUT', '/api/taxonomy/reorder', { kind: 'groups', keys })
+    setOrder(keys)
+    const ok = await call('PUT', '/api/taxonomy/reorder', { kind: 'groups', keys }, { refresh: false })
+    if (!ok) setOrder(previous)
   }
 
   return (
@@ -259,7 +302,7 @@ function GroupsTab({ taxonomy }: SettingsViewProps) {
       )}
 
       <Card>
-        {taxonomy.groups.map((group, i) =>
+        {groups.map((group, i) =>
           editing === group.key ? (
             <GroupForm
               key={group.key}
@@ -282,7 +325,7 @@ function GroupsTab({ taxonomy }: SettingsViewProps) {
                 <button className={iconBtn} disabled={i === 0 || busy} onClick={() => move(i, -1)} title="Subir">
                   <ArrowUp className="w-3.5 h-3.5" />
                 </button>
-                <button className={iconBtn} disabled={i === taxonomy.groups.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
+                <button className={iconBtn} disabled={i === groups.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
                   <ArrowDown className="w-3.5 h-3.5" />
                 </button>
                 <button className={iconBtn} onClick={() => { setEditing(group.key); setCreating(false) }} title="Editar">
@@ -351,11 +394,21 @@ function ModulesTab({ taxonomy, moduleUsage }: SettingsViewProps) {
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const { list: modules, order, setOrder } = useOrderedList(taxonomy.modules)
+
+  const q = search.trim().toLowerCase()
+  const visible = q
+    ? modules.filter((m) => `${m.label} ${m.key} ${m.description}`.toLowerCase().includes(q))
+    : modules
 
   async function move(index: number, dir: -1 | 1) {
-    const keys = taxonomy.modules.map((m) => m.key)
+    const previous = order
+    const keys = modules.map((m) => m.key)
     ;[keys[index], keys[index + dir]] = [keys[index + dir], keys[index]]
-    await call('PUT', '/api/taxonomy/reorder', { kind: 'modules', keys })
+    setOrder(keys)
+    const ok = await call('PUT', '/api/taxonomy/reorder', { kind: 'modules', keys }, { refresh: false })
+    if (!ok) setOrder(previous)
   }
 
   return (
@@ -381,8 +434,23 @@ function ModulesTab({ taxonomy, moduleUsage }: SettingsViewProps) {
         />
       )}
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar módulo..."
+          aria-label="Buscar módulo"
+          className={cn(inputClass, 'pl-8')}
+        />
+      </div>
+
       <Card>
-        {taxonomy.modules.map((mod, i) => {
+        {visible.length === 0 && (
+          <p className="px-4 py-6 text-center text-sm text-gray-400">Sin módulos que coincidan con «{search}».</p>
+        )}
+        {visible.map((mod) => {
+          const i = modules.findIndex((m) => m.key === mod.key)
           const group = taxonomy.groups.find((g) => g.key === mod.groupKey)
           const usage = moduleUsage[mod.key] ?? 0
 
@@ -418,12 +486,16 @@ function ModulesTab({ taxonomy, moduleUsage }: SettingsViewProps) {
                 </div>
                 <UsageBadge count={usage} noun="artifact" />
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <button className={iconBtn} disabled={i === 0 || busy} onClick={() => move(i, -1)} title="Subir">
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button className={iconBtn} disabled={i === taxonomy.modules.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
+                  {!q && (
+                    <>
+                      <button className={iconBtn} disabled={i === 0 || busy} onClick={() => move(i, -1)} title="Subir">
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button className={iconBtn} disabled={i === modules.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                   <button className={iconBtn} onClick={() => { setEditing(mod.key); setCreating(false) }} title="Editar">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -522,10 +594,15 @@ function StatusesTab({ taxonomy, statusUsage }: SettingsViewProps) {
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
+  const { list: statuses, order, setOrder } = useOrderedList(taxonomy.statuses)
+
   async function move(index: number, dir: -1 | 1) {
-    const keys = taxonomy.statuses.map((s) => s.key)
+    const previous = order
+    const keys = statuses.map((s) => s.key)
     ;[keys[index], keys[index + dir]] = [keys[index + dir], keys[index]]
-    await call('PUT', '/api/taxonomy/reorder', { kind: 'statuses', keys })
+    setOrder(keys)
+    const ok = await call('PUT', '/api/taxonomy/reorder', { kind: 'statuses', keys }, { refresh: false })
+    if (!ok) setOrder(previous)
   }
 
   return (
@@ -551,7 +628,7 @@ function StatusesTab({ taxonomy, statusUsage }: SettingsViewProps) {
       )}
 
       <Card>
-        {taxonomy.statuses.map((status, i) => {
+        {statuses.map((status, i) => {
           const usage = statusUsage[status.key] ?? 0
 
           if (editing === status.key) {
@@ -598,7 +675,7 @@ function StatusesTab({ taxonomy, statusUsage }: SettingsViewProps) {
                   <button className={iconBtn} disabled={i === 0 || busy} onClick={() => move(i, -1)} title="Subir">
                     <ArrowUp className="w-3.5 h-3.5" />
                   </button>
-                  <button className={iconBtn} disabled={i === taxonomy.statuses.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
+                  <button className={iconBtn} disabled={i === statuses.length - 1 || busy} onClick={() => move(i, 1)} title="Bajar">
                     <ArrowDown className="w-3.5 h-3.5" />
                   </button>
                   <button className={iconBtn} onClick={() => { setEditing(status.key); setCreating(false) }} title="Editar">
@@ -691,6 +768,10 @@ function TagsTab({ tags, tagUsage }: SettingsViewProps) {
   const { call, busy } = useApi()
   const [editing, setEditing] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
+  const [search, setSearch] = useState('')
+
+  const q = search.trim().toLowerCase()
+  const visible = q ? tags.filter((t) => t.includes(q)) : tags
 
   return (
     <div className="space-y-3">
@@ -699,13 +780,29 @@ function TagsTab({ tags, tagUsage }: SettingsViewProps) {
         Las etiquetas nuevas se crean desde el formulario de artifact.
       </p>
 
+      {tags.length > 5 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar etiqueta..."
+            aria-label="Buscar etiqueta"
+            className={cn(inputClass, 'pl-8')}
+          />
+        </div>
+      )}
+
       {tags.length === 0 ? (
         <Card>
           <p className="px-4 py-8 text-center text-sm text-gray-400">No hay etiquetas todavía.</p>
         </Card>
       ) : (
         <Card>
-          {tags.map((tag) => {
+          {visible.length === 0 && (
+            <p className="px-4 py-6 text-center text-sm text-gray-400">Sin etiquetas que coincidan con «{search}».</p>
+          )}
+          {visible.map((tag) => {
             const usage = tagUsage[tag] ?? 0
             const isEditing = editing === tag
             const mergeTarget = isEditing && newName.trim().toLowerCase() !== tag && tags.includes(newName.trim().toLowerCase())

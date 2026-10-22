@@ -7,16 +7,11 @@ import { getTaxonomy } from '@/lib/taxonomy'
 import { findGroup, findModule, findStatus } from '@/lib/types'
 import { colorClasses } from '@/lib/colors'
 import { ArtifactRestoreButton } from '@/components/artifacts/artifact-restore-button'
-import { ArrowLeft, Archive, Clock, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArchiveLog, type ArchiveLogEntry } from '@/components/artifacts/archive-log'
+import { ArrowLeft, Archive, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
-
-const ACTION_CONFIG = {
-  created: { label: 'Creado', icon: Plus, color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' },
-  updated: { label: 'Editado', icon: Pencil, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' },
-  deleted: { label: 'Eliminado', icon: Trash2, color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20' },
-}
 
 export default async function ArchivePage() {
   const [currentArtifacts, entries, taxonomy, user] = await Promise.all([
@@ -37,10 +32,18 @@ export default async function ArchivePage() {
     b.archivedAt.localeCompare(a.archivedAt)
   )
 
-  /* ── Full changelog (newest first, cap at 100) ── */
-  const changelog = [...entries]
+  /* ── Full changelog (newest first, cap at 500; the client paginates) ── */
+  const changelog: ArchiveLogEntry[] = [...entries]
     .sort((a, b) => b.archivedAt.localeCompare(a.archivedAt))
-    .slice(0, 100)
+    .slice(0, 500)
+    .map((entry) => ({
+      action: entry.action,
+      archivedAt: entry.archivedAt,
+      artifactId: entry.artifact.id,
+      name: entry.artifact.name,
+      moduleLabel: findModule(taxonomy, entry.artifact.module)?.label ?? '',
+      inCurrent: currentIds.has(entry.artifact.id),
+    }))
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
@@ -124,57 +127,7 @@ export default async function ArchivePage() {
       </section>
 
       {/* Changelog */}
-      {changelog.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Historial de cambios
-            <span className="ml-2 text-xs font-normal text-gray-400">(últimas 100 entradas)</span>
-          </h2>
-
-          <div className="bg-white dark:bg-night-802 rounded-xl border border-gray-200 dark:border-night-801 divide-y divide-gray-100 dark:divide-night-801 overflow-hidden">
-            {changelog.map((entry, i) => {
-              const cfg = ACTION_CONFIG[entry.action]
-              const ActionIcon = cfg.icon
-              const mod = findModule(taxonomy, entry.artifact.module)
-              const isInCurrent = currentIds.has(entry.artifact.id)
-
-              return (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-night-801/50 transition-colors">
-                  {/* Action badge */}
-                  <span className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full shrink-0', cfg.color)}>
-                    <ActionIcon className="w-3 h-3" />
-                    {cfg.label}
-                  </span>
-
-                  {/* Name */}
-                  <div className="flex-1 min-w-0">
-                    {isInCurrent ? (
-                      <Link
-                        href={`/artifacts/${entry.artifact.id}`}
-                        className="text-sm text-gray-900 dark:text-white hover:text-lipu-500 transition-colors truncate block"
-                      >
-                        {entry.artifact.name || 'Sin nombre'}
-                      </Link>
-                    ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {entry.artifact.name || 'Sin nombre'}
-                      </p>
-                    )}
-                    {mod && (
-                      <p className="text-[10px] text-gray-400 truncate">{mod.label}</p>
-                    )}
-                  </div>
-
-                  {/* Date */}
-                  <p className="text-[10px] text-gray-400 shrink-0">
-                    {new Date(entry.archivedAt).toLocaleString('es-MX')}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      {changelog.length > 0 && <ArchiveLog entries={changelog} />}
     </div>
   )
 }

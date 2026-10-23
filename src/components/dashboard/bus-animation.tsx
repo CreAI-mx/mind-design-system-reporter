@@ -16,6 +16,13 @@ export function BusAnimation() {
           0%   { opacity: 0.85; transform: translate(-50%, -50%) scale(0.9); }
           100% { opacity: 0;    transform: translate(-50%, -50%) scale(1.7); }
         }
+        .bus-ride { animation: busRide 20s linear infinite; }
+        .bus-halo { animation: lipuPulse 1800ms ease-out infinite; }
+        /* Quien pide menos movimiento ve el bus estacionado, sin pulso. */
+        @media (prefers-reduced-motion: reduce) {
+          .bus-ride { animation: none; left: 12% !important; }
+          .bus-halo { animation: none; opacity: 0.35; }
+        }
       `}</style>
 
       {/* Road */}
@@ -42,8 +49,8 @@ export function BusAnimation() {
           left: -95,
           width: 80,
           height: 48,
-          animation: 'busRide 20s linear infinite',
         }}
+        className="bus-ride"
       >
         {/* Halo — lipu-unit-focus-pulse */}
         <div
@@ -55,8 +62,8 @@ export function BusAnimation() {
             height: 46,
             borderRadius: '50%',
             border: '2px solid #3b82f6',
-            animation: 'lipuPulse 1800ms ease-out infinite',
           }}
+          className="bus-halo"
         />
         {/*
           Original SVG: 41×69 portrait (bus facing "up").
